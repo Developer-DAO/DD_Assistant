@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+model Guilds {
+    discordId               String         @id @map("_id")
+    adminCommand            String[]       @default([])
+    adminMember             String[]       @default([])
+    adminRole               String[]       @default([])
+    archiveCategoryChannels String[]       @default([])
+    archiveChannels         String[]       @default([])
+    onboardSchedule         String[]       @default([])
+    channels                ChannelSetting
+}
+
+model ChannelScan {
+    discordId  String     @id @map("_id")
+    categories Category[]
+}
+
+type ChannelSetting {
+    introductionChannel String @default("")
+    notificationChannel String @default("")
+    onboardChannel      String @default("")
+    celebrateChannel    String @default("")
+}
+
+type Channel {
+    channelId        String
+    channelName      String
+    lastMsgTimestamp String
+    messageId        String
+    status           Boolean
+    timestamp        String
+}
+
+type Category {
+    categoryId   String
+    categoryName String
+    channels     Channel[] 
+}
