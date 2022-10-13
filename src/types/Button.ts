@@ -3,7 +3,7 @@ import { MyClient } from '../structures/Client';
 
 export interface ExtendedButtonInteraction extends ButtonInteraction {
 	member: GuildMember;
-	message: Message
+	message: Message;
 }
 
 interface ButtonRunOptions {
@@ -12,7 +12,7 @@ interface ButtonRunOptions {
 }
 
 type RunFunction = (options: ButtonRunOptions) => any;
-type buttonCustomId = 'end';
+type buttonCustomId = 'end' | 'schedule' | 'talk' | 'instruction' | 'talk_yes' | 'talk_no';
 export interface ButtonType {
 	customIds: Array<buttonCustomId>;
 	execute: RunFunction;

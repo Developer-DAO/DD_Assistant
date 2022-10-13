@@ -1,9 +1,10 @@
 import { sprintf } from 'sprintf-js';
-import { ERROR_REPLY, NUMBER, STICKYMSG } from './const';
+import { COMMAND_CONTENT, ERROR_REPLY, NUMBER, STICKYMSG } from './const';
 import _ from 'lodash';
 import { TimeOutError } from './error';
 import { GuildInform } from '../types/Cache';
-import { APIEmbedField, PermissionFlagsBits, TextChannel } from 'discord.js';
+import { APIEmbedField, EmbedBuilder, PermissionFlagsBits, TextChannel } from 'discord.js';
+import { myCache } from '../structures/Cache';
 export interface awaitWrapType<T> {
 	result: T | null;
 	error: any | null;
@@ -171,6 +172,12 @@ export function checkIntroductionChannelPermission(channel: TextChannel, userId:
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ReadMessageHistory])) {
 		return 'Missing **READ MESSAGE HISTORY** access.';
 	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.CreatePublicThreads])) {
+		return 'Missing **CREATE PUBLIC THREADS** access.';
+	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessagesInThreads])) {
+		return 'Missing **SEND MESSAGES IN THREAD** access.';
+	}
 	return false;
 }
 
@@ -204,4 +211,37 @@ export async function stickyMsgHandler(
 		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg?.deletable)
 		.forEach((msg) => msg.delete());
 	return curChannel.send(STICKYMSG);
+}
+
+export function fetchOnboardingSchedule(guildId: string) {
+	let description: string;
+	const guildInform = myCache.myGet('Guild')[guildId];
+	if (guildInform.onboardSchedule.length === 0) {
+		description = COMMAND_CONTENT.ONBOARDING_END;
+	} else {
+		const onboardChannelContent = guildInform.channels.onboardChannel
+			? ` in <#${guildInform.channels.onboardChannel}>`
+			: '';
+		const time = Math.floor(new Date().getTime() / 1000);
+		description = guildInform.onboardSchedule
+			.sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+			.map((onboardInform, index) => {
+				const timestamp = Number(onboardInform.timestamp);
+				if (time > timestamp && time < timestamp + NUMBER.ONBOARDING_DURATION) {
+					return sprintf(COMMAND_CONTENT.ONBOARDING_GOINGON, {
+						...onboardInform,
+						index: index + 1,
+						channelInform: onboardChannelContent
+					});
+				}
+				return sprintf(COMMAND_CONTENT.ONBOARDING, {
+					...onboardInform,
+					index: index + 1
+				});
+			})
+			.toString()
+			.replace(/,/g, '');
+	}
+
+	return new EmbedBuilder().setTitle('Onboarding Schedule').setDescription(description);
 }

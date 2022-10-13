@@ -8,12 +8,22 @@ import {
 import { GuildChannelScan, GuildInform, MYNULL, VoiceContextCache } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 
-type NumericalProperty = 'AWAIT_TIMEOUT' | 'AUTOCOMPLETE_OPTION_LENGTH';
+type NumericalProperty =
+	| 'AWAIT_TIMEOUT'
+	| 'AUTOCOMPLETE_OPTION_LENGTH'
+	| 'ONBOARDING_DURATION'
+	| 'CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
 	| 'CHANNEL_SETTING_SUCCESS_REPLY'
-	| 'INTRODUCTION';
+	| 'INTRODUCTION'
+	| 'ONBOARDING'
+	| 'ONBOARDING_END'
+	| 'ONBOARDING_OPTION'
+	| 'ONBOARDING_GOINGON'
+	| 'THREAD_WELCOME_MSG'
+	| 'WELCOME_THREAD_NAME';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
@@ -32,7 +42,9 @@ type ResType = {
 
 export const NUMBER: Numerical = {
 	AWAIT_TIMEOUT: 15 * 1000,
-	AUTOCOMPLETE_OPTION_LENGTH: 25
+	AUTOCOMPLETE_OPTION_LENGTH: 25,
+	ONBOARDING_DURATION: 60,
+	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -75,7 +87,7 @@ export const defaultVoiceContextCache: VoiceContextCache = {
 
 export const defaultChannelScanResult: GuildChannelScan = {
 	categories: []
-}
+};
 
 interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandOptionChoiceData {
 	name: CommandNameEmun;
@@ -88,7 +100,17 @@ export const COMMAND_CONTENT: CommandContent = {
 	CHANNEL_SETTING_SUCCESS_REPLY:
 		'Success to set <#%(targetChannelId)s> as %(setChannelName)s channel.',
 	INTRODUCTION:
-		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or chat with a D_D community manager 🤝'
+		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or chat with a D_D community manager 🤝',
+	ONBOARDING:
+		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>) hosted by <@%(hostId)s>. RSVP [here](<%(eventLink)s>)\n',
+	ONBOARDING_GOINGON:
+		'%(index)d. Group onboarding Call is currently live in %(channelInform)s  🔥🔥🔥 hosted by <@%(hostId)s> Started (<t:%(timestamp)s:R>)\n',
+	ONBOARDING_END:
+		'Onboarding calls for this week have ended. We will update the latest ones this Sunday or next Monday.',
+	ONBOARDING_OPTION: '%(index)d. %(timestamp)s hosted by %(hostName)s',
+	WELCOME_THREAD_NAME: 'Welcome <@%s>',
+	THREAD_WELCOME_MSG:
+		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:1016532004185063464> and choose a query.'
 };
 
 export const STICKYMSG: Readonly<MessageReplyOptions> = {
@@ -106,13 +128,20 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 				.setLabel('Talk with us')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary),
-			new ButtonBuilder()
-				.setCustomId('instruction')
-				.setLabel('DAO Instruction')
-				.setEmoji('📚')
-				.setStyle(ButtonStyle.Success)
+			// new ButtonBuilder()
+			// 	.setCustomId('instruction')
+			// 	.setLabel('DAO Instruction')
+			// 	.setEmoji('📚')
+			// 	.setStyle(ButtonStyle.Success)
 		])
 	]
+};
+
+export const EMOJI = {
+	// ✅
+	CHECK_MARK: '1029777569303765044',
+	// ❌
+	WRONG: '1029777597707603988'
 };
 
 export const COMMAND_CHOICES: Array<ExtendedApplicationCommandOptionChoiceData> = [

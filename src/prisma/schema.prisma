@@ -17,7 +17,7 @@ model Guilds {
     adminRole               String[]       @default([])
     archiveCategoryChannels String[]       @default([])
     archiveChannels         String[]       @default([])
-    onboardSchedule         String[]       @default([])
+    onboardSchedule         OnboardInform[] 
     channels                ChannelSetting
 }
 
@@ -46,4 +46,11 @@ type Category {
     categoryId   String
     categoryName String
     channels     Channel[] 
+}
+
+type OnboardInform {
+    timestamp String
+	hostId String
+	eventLink String
+	hostName String
 }
