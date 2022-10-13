@@ -50,7 +50,5 @@ type Category {
 
 type OnboardInform {
     timestamp String
-	hostId String
 	eventLink String
-	hostName String
 }

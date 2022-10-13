@@ -17,12 +17,15 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		guildName: interaction?.guild?.name
 	};
 
-	if (!interaction.isAutocomplete()) {
-		if (!myCache.myHas('Guild') || !myCache.myHas('VoiceContext'))
+	if (!myCache.myHas('Guild') || !myCache.myHas('VoiceContext')) {
+		if (interaction.isAutocomplete()) {
+			return interaction.respond([]);
+		} else {
 			return interaction.reply({
 				content: 'Bot is initing... Please try again later.',
 				ephemeral: true
 			});
+		}
 	}
 
 	if (interaction.isCommand()) {

@@ -23,7 +23,8 @@ type CommandContentPropery =
 	| 'ONBOARDING_OPTION'
 	| 'ONBOARDING_GOINGON'
 	| 'THREAD_WELCOME_MSG'
-	| 'WELCOME_THREAD_NAME';
+	| 'WELCOME_THREAD_NAME'
+	| 'ONBOARDING_CALL_EVENT_NAME';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
@@ -95,6 +96,7 @@ interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandO
 }
 
 export const COMMAND_CONTENT: CommandContent = {
+	ONBOARDING_CALL_EVENT_NAME: 'Group Onboarding Call',
 	CHANNEL_SETTING_FAIL_REPLY:
 		'Fail to set <#%(targetChannelId)s> as %(setChannelName)s channel, because of `%(reason)s`.',
 	CHANNEL_SETTING_SUCCESS_REPLY:
@@ -102,12 +104,12 @@ export const COMMAND_CONTENT: CommandContent = {
 	INTRODUCTION:
 		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or chat with a D_D community manager 🤝',
 	ONBOARDING:
-		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>) hosted by <@%(hostId)s>. RSVP [here](<%(eventLink)s>)\n',
+		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n',
 	ONBOARDING_GOINGON:
-		'%(index)d. Group onboarding Call is currently live in %(channelInform)s  🔥🔥🔥 hosted by <@%(hostId)s> Started (<t:%(timestamp)s:R>)\n',
+		'%(index)d. Group onboarding Call is currently live in %(channelInform)s 🔥🔥🔥 Started (<t:%(timestamp)s:R>)\n',
 	ONBOARDING_END:
 		'Onboarding calls for this week have ended. We will update the latest ones this Sunday or next Monday.',
-	ONBOARDING_OPTION: '%(index)d. %(timestamp)s hosted by %(hostName)s',
+	ONBOARDING_OPTION: '%(index)d. %(timestamp)s.',
 	WELCOME_THREAD_NAME: 'Welcome <@%s>',
 	THREAD_WELCOME_MSG:
 		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:1016532004185063464> and choose a query.'
@@ -127,7 +129,7 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 				.setCustomId('talk')
 				.setLabel('Talk with us')
 				.setEmoji('📢')
-				.setStyle(ButtonStyle.Secondary),
+				.setStyle(ButtonStyle.Secondary)
 			// new ButtonBuilder()
 			// 	.setCustomId('instruction')
 			// 	.setLabel('DAO Instruction')
@@ -424,3 +426,28 @@ export const DOCS: Record<string, ResType> = {
 		emoji: '🎉'
 	}
 };
+
+export enum WEEK {
+	Sunday = "Sunday",
+	Monday = 'Monday',
+	Tuesday = 'Tuesday',
+	Wednesday = 'Wednesday',
+	Thursday = 'Thursday',
+	Friday = 'Friday',
+	Saturday = 'Saturday'
+}
+
+export enum MONTH{
+	January = 'January',
+	February = 'February',
+	March = 'March',
+	April = 'April',
+	May = 'May',
+	June = 'June',
+	July = 'July',
+	August = 'August',
+	September = 'September',
+	October = 'October',
+	November = 'November',
+	December = 'December'
+}

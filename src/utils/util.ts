@@ -1,5 +1,5 @@
 import { sprintf } from 'sprintf-js';
-import { COMMAND_CONTENT, ERROR_REPLY, NUMBER, STICKYMSG } from './const';
+import { COMMAND_CONTENT, ERROR_REPLY, MONTH, NUMBER, STICKYMSG, WEEK } from './const';
 import _ from 'lodash';
 import { TimeOutError } from './error';
 import { GuildInform } from '../types/Cache';
@@ -244,4 +244,17 @@ export function fetchOnboardingSchedule(guildId: string) {
 	}
 
 	return new EmbedBuilder().setTitle('Onboarding Schedule').setDescription(description);
+}
+
+export function convertTimeStamp(timestampInSec) {
+	const timestampInMiliSec = timestampInSec * 1000;
+	const date = new Date(timestampInMiliSec);
+	return sprintf('%(week)s, %(month)s %(day)d, %(year)d %(hour)d:%(min)d', {
+		week: WEEK[date.getDay()],
+		month: MONTH[date.getUTCMonth()],
+		day: date.getUTCDate(),
+		year: date.getUTCFullYear(),
+		hour: date.getUTCHours(),
+		min: date.getUTCMinutes()
+	});
 }
