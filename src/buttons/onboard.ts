@@ -1,8 +1,17 @@
 import { ButtonBuilder } from '@discordjs/builders';
-import { ActionRowBuilder, ButtonStyle, MessageType, TextChannel, ThreadChannel } from 'discord.js';
+import {
+	ActionRowBuilder,
+	ButtonStyle,
+	EmbedBuilder,
+	MessageType,
+	TextChannel,
+	ThreadChannel
+} from 'discord.js';
 import { sprintf } from 'sprintf-js';
+
 import { Button } from '../structures/Button';
-import { COMMAND_CONTENT, EMOJI, NUMBER } from '../utils/const';
+import { myCache } from '../structures/Cache';
+import { COMMAND_CONTENT, EMOJI } from '../utils/const';
 import { fetchOnboardingSchedule } from '../utils/util';
 
 export default new Button({
@@ -50,6 +59,7 @@ export default new Button({
 					COMMAND_CONTENT.WELCOME_THREAD_NAME,
 					interaction.user.id
 				);
+                
 				if (messages.size === 0) {
 					welcomeThread = await currentChannel.threads.create({
 						name: welcomeThreadName
@@ -72,9 +82,37 @@ export default new Button({
 						});
 					}
 				}
-				welcomeThread.send({
-					content: COMMAND_CONTENT.THREAD_WELCOME_MSG
-				});
+				const { introductionChannel, onboardNotificationChannel } =
+					myCache.myGet('Guild')[interaction.guild.id].channels;
+				const onboardNotifyChannel = interaction.guild.channels.cache.get(
+					onboardNotificationChannel
+				) as TextChannel;
+
+				if (currentChannel.id === introductionChannel) {
+					welcomeThread.send({
+						content: COMMAND_CONTENT.THREAD_WELCOME_MSG
+					});
+				} else {
+					welcomeThread.send({
+						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG
+					});
+				}
+
+				if (onboardNotificationChannel) {
+					onboardNotifyChannel.send({
+						embeds: [
+							new EmbedBuilder()
+								.setAuthor({
+									name: `@Onboarding --- Welcome ${interaction.member.displayName}!`,
+									iconURL: interaction.member.displayAvatarURL()
+								})
+								.setDescription(
+									`Welcome to our new member in <#${welcomeThread.id}>`
+								)
+						]
+					});
+				}
+
 				return interaction.followUp({
 					content: `Your thread has been created <#${welcomeThread.id}>. Welcome to Developer DAO`
 				});

@@ -18,5 +18,5 @@ module.exports = {
 	proseWrap: 'preserve',
 	htmlWhitespaceSensitivity: 'css',
 	endOfLine: 'lf',
-    plugins: ["prettier-plugin-prisma"]
+	plugins: ['prettier-plugin-prisma']
 };

@@ -9,10 +9,12 @@ export default new Auto({
 			name: DOCS[key]['index'],
 			value: key
 		}));
+
 		if (inputValue === '') return interaction.respond(res);
 		const filter = res.filter((value) =>
 			value.name.toLowerCase().includes(inputValue.toLowerCase())
 		);
+
 		if (filter.length === 0) return interaction.respond([]);
 		else return interaction.respond(filter);
 	}

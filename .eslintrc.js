@@ -1,5 +1,6 @@
 module.exports = {
 	extends: ['alloy', 'alloy/typescript'],
+	plugins: ['simple-import-sort'],
 	env: {
 		// Your environments (which contains several predefined global variables)
 		//
@@ -22,6 +23,14 @@ module.exports = {
 		complexity: ['error', 50],
 		'no-warning-comments': [1, { terms: ['todo', 'fixme', 'to-do'], location: 'anywhere' }],
 		'max-depth': ['error', 8],
-		'@typescript-eslint/consistent-type-definitions': 'off'
+		'@typescript-eslint/consistent-type-definitions': 'off',
+		'simple-import-sort/imports': 'error',
+		'simple-import-sort/exports': 'error',
+		'no-unused-vars': 'error',
+		'prefer-const': 'error',
+		'no-irregular-whitespace': 'error',
+		'no-empty-function': 'error',
+		'no-duplicate-imports': 'error',
+		'newline-after-var': 'error'
 	}
 };

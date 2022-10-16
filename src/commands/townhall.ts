@@ -8,6 +8,7 @@ import {
 	VoiceChannel
 } from 'discord.js';
 import { sprintf } from 'sprintf-js';
+
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { MemberVoiceInform } from '../types/Cache';
@@ -62,6 +63,7 @@ export default new Command({
 			const membersVoiceInform: MemberVoiceInform = {};
 
 			const current = getCurrentTimeMin();
+
 			voiceChannel.members.forEach((member, memberId) => {
 				if (member.user.bot) return;
 				membersVoiceInform[memberId] = {

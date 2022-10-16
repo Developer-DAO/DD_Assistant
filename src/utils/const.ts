@@ -5,14 +5,23 @@ import {
 	ButtonStyle,
 	MessageReplyOptions
 } from 'discord.js';
-import { GuildChannelScan, GuildInform, MYNULL, VoiceContextCache } from '../types/Cache';
+
+import {
+	GuildChannelScan,
+	GuildInform,
+	MYNULL,
+	PartialChannelInform,
+	VoiceContextCache
+} from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 
 type NumericalProperty =
 	| 'AWAIT_TIMEOUT'
 	| 'AUTOCOMPLETE_OPTION_LENGTH'
 	| 'ONBOARDING_DURATION'
-	| 'CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL';
+	| 'CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL'
+	| 'EMBED_CONTENT_LIMIT'
+	| 'SCAN_VIEW_DURATION';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -24,7 +33,11 @@ type CommandContentPropery =
 	| 'ONBOARDING_GOINGON'
 	| 'THREAD_WELCOME_MSG'
 	| 'WELCOME_THREAD_NAME'
-	| 'ONBOARDING_CALL_EVENT_NAME';
+	| 'ONBOARDING_CALL_EVENT_NAME'
+	| 'WOMEN_THREAD_WELCOME_MSG'
+	| 'CHANNEL_WITHOUT_PARENT_PARENTID'
+	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
+	| 'DISCORD_MSG';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
@@ -45,7 +58,9 @@ export const NUMBER: Numerical = {
 	AWAIT_TIMEOUT: 15 * 1000,
 	AUTOCOMPLETE_OPTION_LENGTH: 25,
 	ONBOARDING_DURATION: 60,
-	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000
+	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000,
+	EMBED_CONTENT_LIMIT: 8,
+	SCAN_VIEW_DURATION: 5 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -72,10 +87,23 @@ export const defaultGuildInform: GuildInform = {
 	onboardSchedule: [],
 	channels: {
 		introductionChannel: MYNULL,
+		womenIntroductionChannel: MYNULL,
 		notificationChannel: MYNULL,
+		onboardNotificationChannel: MYNULL,
 		onboardChannel: MYNULL,
 		celebrateChannel: MYNULL
+	},
+	switch: {
+		autoArchive: false
 	}
+};
+
+export const defaultPartialChannelInform: PartialChannelInform = {
+	channelName: '',
+	lastMsgTimestamp: '0',
+	timestamp: '0',
+	status: false,
+	messageId: ''
 };
 
 export const defaultVoiceContextCache: VoiceContextCache = {
@@ -86,9 +114,7 @@ export const defaultVoiceContextCache: VoiceContextCache = {
 	duration: null
 };
 
-export const defaultChannelScanResult: GuildChannelScan = {
-	categories: []
-};
+export const defaultChannelScanResult: GuildChannelScan = {};
 
 interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandOptionChoiceData {
 	name: CommandNameEmun;
@@ -112,7 +138,12 @@ export const COMMAND_CONTENT: CommandContent = {
 	ONBOARDING_OPTION: '%(index)d. %(timestamp)s.',
 	WELCOME_THREAD_NAME: 'Welcome <@%s>',
 	THREAD_WELCOME_MSG:
-		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:1016532004185063464> and choose a query.'
+		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:1016532004185063464> and choose a query.',
+	WOMEN_THREAD_WELCOME_MSG:
+		"Welcome to DevDAO Women :sparkles:\n\nDevDAO women is a Social Space for Women/Nonbinary/Ally folks within Developer DAO. :seedling:\n\nFirst say say gm on :rainbow:-gm to share the blissful energy:magic_wand:\n\nDid you pick your role yet?\n\nGo to <#960706880420859904> to pick your role.\n\nIf you identify as **Women/Nonbinary** then go for :purple_heart:\nIf **you don't identify as either of them/don't want to talk about your identity** then go for :orange_heart:\n\nIf you have any ideas/topic you wanna discuss, any questions you wanna ask or just want to send some cat pictures, them <#957712595056459938> is the place for you. :wave:\n\nDon't forget to check out <#999890882251722762> if you are looking for opportunities/looking to hire someone. :rainbow:\n\nOur team call happens in Every Friday 5.00 pm UTC. :rainbow:",
+	CHANNEL_WITHOUT_PARENT_PARENTID: '0',
+	CHANNEL_WITHOUT_PARENT_PARENTNAME: 'No Category Name',
+	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s'
 };
 
 export const STICKYMSG: Readonly<MessageReplyOptions> = {
@@ -428,7 +459,7 @@ export const DOCS: Record<string, ResType> = {
 };
 
 export enum WEEK {
-	Sunday = "Sunday",
+	Sunday = 'Sunday',
 	Monday = 'Monday',
 	Tuesday = 'Tuesday',
 	Wednesday = 'Wednesday',
@@ -437,7 +468,7 @@ export enum WEEK {
 	Saturday = 'Saturday'
 }
 
-export enum MONTH{
+export enum MONTH {
 	January = 'January',
 	February = 'February',
 	March = 'March',

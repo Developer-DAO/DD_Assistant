@@ -1,7 +1,8 @@
 import { ButtonInteraction, GuildMember, Message } from 'discord.js';
+
 import { MyClient } from '../structures/Client';
 
-export interface ExtendedButtonInteraction extends ButtonInteraction {
+export default interface ExtendedButtonInteraction extends ButtonInteraction {
 	member: GuildMember;
 	message: Message;
 }

@@ -1,4 +1,5 @@
 import { sprintf } from 'sprintf-js';
+
 import { Auto } from '../structures/AutoComplete';
 import { myCache } from '../structures/Cache';
 import { COMMAND_CONTENT, NUMBER } from '../utils/const';
@@ -10,6 +11,7 @@ export default new Auto({
 		const guildId = interaction.guild.id;
         // todo no need to give response when input comes
 		const guildInformCache = myCache.myGet('Guild')[guildId];
+        
 		if (!guildInformCache) return interaction.respond([]);
 
 		const choices = guildInformCache.onboardSchedule

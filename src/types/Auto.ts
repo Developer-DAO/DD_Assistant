@@ -1,4 +1,5 @@
 import { AutocompleteInteraction } from 'discord.js';
+
 import { MyClient } from '../structures/Client';
 import { CommandNameEmun } from './Command';
 

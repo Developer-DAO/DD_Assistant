@@ -1,4 +1,5 @@
 import NodeCache from 'node-cache';
+
 import { CacheType } from '../types/Cache';
 
 class MyCache extends NodeCache {
@@ -22,6 +23,12 @@ class MyCache extends NodeCache {
 
 	public myHas<Key extends keyof CacheType>(key: Key) {
 		return super.has(key);
+	}
+
+	public myHases<Key extends keyof CacheType>(keys: Array<Key>) {
+		return keys.reduce((pre, cur) => {
+			return pre && super.has(cur)
+		}, true)
 	}
 }
 

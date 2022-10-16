@@ -1,5 +1,6 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Message } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { sprintf } from 'sprintf-js';
+
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
 import { LINK } from '../utils/const';
@@ -9,6 +10,7 @@ export default new Button({
 	customIds: ['end'],
 	execute: async ({ interaction }) => {
 		const { hostId, attendees, duration } = myCache.myGet('VoiceContext');
+
 		if (interaction.user.id !== hostId)
 			return interaction.reply({
 				content: 'Sorry, only the host can end this event.',
@@ -35,6 +37,7 @@ export default new Button({
 		const eligibleAttendees = Object.values(attendees)
 			.filter((value) => current - value.timestamp >= duration)
 			.map((value) => value.name);
+            
 		myCache.set('VoiceContext', {});
 		if (eligibleAttendees.length === 0)
 			return interaction.followUp({
@@ -42,6 +45,7 @@ export default new Button({
 			});
 		const universalBOM = '\uFEFF';
 		let csvContent = universalBOM + 'Discord Name\r\n';
+        
 		csvContent = eligibleAttendees.reduce((pre, cur) => {
 			return pre + cur + '\r\n';
 		}, csvContent);

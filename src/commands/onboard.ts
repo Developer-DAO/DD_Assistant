@@ -1,6 +1,7 @@
 import { OnboardInform } from '@prisma/client';
-import { ApplicationCommandOptionType, ChannelType, TextChannel } from 'discord.js';
+import { ApplicationCommandOptionType, ChannelType } from 'discord.js';
 import { sprintf } from 'sprintf-js';
+
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
@@ -70,6 +71,7 @@ export default new Command({
 			});
 
 			const prefixLinks = scheduleLink.match(/https:\/\/discord.com\/channels\//g);
+
 			if (!prefixLinks) {
 				return interaction.followUp({
 					content: 'You link is wrong, please check it again.'
@@ -81,6 +83,7 @@ export default new Command({
 				.split('/');
 
 			const targetChannel = interaction.guild.channels.cache.get(channelId);
+
 			if (
 				seshGuildId !== guildId ||
 				!targetChannel ||
@@ -94,6 +97,7 @@ export default new Command({
 			const { result: targetMessage, error } = await awaitWrap(
 				targetChannel.messages.fetch(messageId)
 			);
+            
 			if (error) {
 				return interaction.followUp({
 					content: 'The onboarding schedule event is unfetchable.'
@@ -101,6 +105,7 @@ export default new Command({
 			}
 
 			const embeds = targetMessage.embeds;
+
 			if (embeds.length === 0) {
 				return interaction.followUp({
 					content: 'You link is wrong, please check it again.'
@@ -108,6 +113,7 @@ export default new Command({
 			}
 
 			const seshEmbed = embeds[0]?.toJSON();
+
 			if (!seshEmbed) {
 				return interaction.followUp({
 					content: 'You link is wrong, please check it again.'
@@ -115,9 +121,11 @@ export default new Command({
 			}
 			const onboardInformArray: Array<OnboardInform> = [];
 			const currentTimeStamp = Math.floor(new Date().getTime() / 1000);
+
 			seshEmbed.fields.forEach((field) => {
 				const { value } = field;
-				let eventIndex: Array<number> = [];
+				const eventIndex: Array<number> = [];
+
 				value.match(/\[.+\]/g)?.filter((name, index) => {
 					if (name === COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME) {
 						eventIndex.push(index);
@@ -129,8 +137,10 @@ export default new Command({
 				const matchEventLinks = value.match(
 					/(https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+)/g
 				);
+
 				eventIndex.forEach((index) => {
 					const timestamp = matchEventTimeStamps[index].slice(3, -3);
+
 					if (currentTimeStamp > Number(timestamp)) return;
 					onboardInformArray.push({
 						timestamp: timestamp,
@@ -154,6 +164,7 @@ export default new Command({
 				}
 			});
 			const guildInformCache = myCache.myGet('Guild')[guildId];
+            
 			myCache.mySet('Guild', {
 				...myCache.myGet('Guild'),
 				[guildId]: {

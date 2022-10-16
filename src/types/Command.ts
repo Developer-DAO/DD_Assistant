@@ -5,6 +5,7 @@ import {
 	GuildMember,
 	PermissionResolvable
 } from 'discord.js';
+
 import { MyClient } from '../structures/Client';
 
 export interface ExtendedCommandInteration extends CommandInteraction {
@@ -18,7 +19,7 @@ interface CommandRunOptions {
 }
 
 type RunFunction = (options: CommandRunOptions) => any;
-export type CommandNameEmun = 'devdao' | 'guild' | 'onboard' | 'townhall' | 'birthday';
+export type CommandNameEmun = 'devdao' | 'guild' | 'onboard' | 'townhall' | 'birthday' | 'scan';
 export type CommandType = {
 	name: CommandNameEmun;
 	userPermissions?: PermissionResolvable[];

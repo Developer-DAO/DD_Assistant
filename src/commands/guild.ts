@@ -1,7 +1,10 @@
 import { ApplicationCommandOptionType, ChannelType, EmbedBuilder, TextChannel } from 'discord.js';
 import { sprintf } from 'sprintf-js';
-import { Command } from '../structures/Command';
+
+import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
+import { Command } from '../structures/Command';
+import { GuildInform } from '../types/Cache';
 import { COMMAND_CHOICES, COMMAND_CONTENT } from '../utils/const';
 import {
 	checkChannelPermission,
@@ -9,8 +12,6 @@ import {
 	readGuildInform,
 	stickyMsgHandler
 } from '../utils/util';
-import { prisma } from '../prisma/prisma';
-import { GuildInform } from '../types/Cache';
 
 export default new Command({
 	name: 'guild',
@@ -49,10 +50,24 @@ export default new Command({
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
+							name: 'women_introduction',
+							description:
+								'Set a DevDAO Women Introcution Channel, which members introduce themselves and get onboarding information',
+							channelTypes: [ChannelType.GuildText]
+						},
+						{
+							type: ApplicationCommandOptionType.Channel,
 							name: 'onboarding',
 							description:
 								'Set a Onboarding Voice Channel, which we hold the onboarding calls',
 							channelTypes: [ChannelType.GuildVoice]
+						},
+						{
+							type: ApplicationCommandOptionType.Channel,
+							name: 'onboarding_notification',
+							description:
+								'Set a Onboarding Notification Channel, which onboarding teams can receive the event of thread Creation',
+							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
@@ -179,6 +194,7 @@ export default new Command({
 				const profileEmbed = new EmbedBuilder()
 					.setTitle(`${guildName} Setting`)
 					.addFields(fields);
+
 				return interaction.reply({
 					embeds: [profileEmbed],
 					ephemeral: true
@@ -187,20 +203,24 @@ export default new Command({
 
 			if (subCommandName === 'channel') {
 				const channelOptions = args.data[0].options[0].options;
+
 				if (channelOptions.length === 0)
 					return interaction.reply({
 						content: 'Sorry, you have to choose at least one options.',
 						ephemeral: true
 					});
 				await interaction.deferReply({ ephemeral: true });
-				let cachedGuildInform = myCache.myGet('Guild')[guildId];
+				const cachedGuildInform = myCache.myGet('Guild')[guildId];
+
 				const successReplyArray: Array<string> = [];
 				const failReplyArray: Array<string> = [];
 				const botId = interaction.guild.members.me.id;
+
 				for (const option of channelOptions) {
 					const { name: channelOptionName, value: channelId } = option;
 					const targetChannel = option.channel as TextChannel;
 					const permissionChecking = checkChannelPermission(targetChannel, botId);
+
 					if (permissionChecking) {
 						failReplyArray.push(
 							sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
@@ -211,11 +231,15 @@ export default new Command({
 						);
 						continue;
 					}
-					if (channelOptionName === 'introduction') {
+					if (
+						channelOptionName === 'introduction' ||
+						channelOptionName === 'women_introduction'
+					) {
 						const permissionChecking = checkIntroductionChannelPermission(
 							targetChannel,
 							botId
 						);
+
 						if (permissionChecking) {
 							failReplyArray.push(
 								sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
@@ -228,10 +252,12 @@ export default new Command({
 						}
 						const preChannelId =
 							myCache.myGet('Guild')[guildId].channels.introductionChannel;
+
 						if (preChannelId && preChannelId !== channelId) {
 							const preChannel = interaction.guild.channels.cache.get(
 								preChannelId
 							) as TextChannel;
+
 							stickyMsgHandler(targetChannel, botId, preChannel);
 						} else {
 							stickyMsgHandler(targetChannel, botId);
@@ -277,10 +303,12 @@ export default new Command({
 		}
 
 		if (subCommandGroupName === 'add') {
-			let guildCache: GuildInform = myCache.myGet('Guild')[guildId];
+			const guildCache: GuildInform = myCache.myGet('Guild')[guildId];
 			const { adminRole, adminCommand, adminMember } = guildCache;
+
 			if (subCommandName === 'admin_role') {
 				const { id: roleId, name: roleName } = args.getRole('role');
+
 				if (adminRole.includes(roleId)) {
 					return interaction.reply({
 						content: `\`${roleName}\` has been set an admin role.`,
@@ -309,6 +337,7 @@ export default new Command({
 
 			if (subCommandName === 'admin_member') {
 				const { id: userId, username } = args.getUser('member');
+
 				if (adminMember.includes(userId)) {
 					return interaction.reply({
 						content: `\`${username}\` has been set an admin member.`,
@@ -336,6 +365,7 @@ export default new Command({
 			}
 			if (subCommandName === 'admin_command') {
 				const commandName = args.getString('command');
+
 				if (adminCommand.includes(commandName)) {
 					return interaction.reply({
 						content: `\`${commandName}\` has been set an admin command.`,
@@ -364,11 +394,13 @@ export default new Command({
 		}
 
 		if (subCommandGroupName === 'remove') {
-			let guildCache: GuildInform = myCache.myGet('Guild')[guildId];
+			const guildCache: GuildInform = myCache.myGet('Guild')[guildId];
 			const { adminRole, adminCommand, adminMember } = guildCache;
+
 			if (subCommandName === 'admin_role') {
 				const removeRoleId = args.getString('role');
 				const filteredAdminRoleId = adminRole.filter((value) => value !== removeRoleId);
+
 				if (filteredAdminRoleId.length === adminRole.length)
 					return interaction.reply({
 						content: 'Role input is invalid.',
@@ -376,6 +408,7 @@ export default new Command({
 					});
 				const targetRole = interaction.guild.roles.cache.get(removeRoleId);
 				let roleName: string;
+
 				if (targetRole) roleName = targetRole.name;
 				else roleName = 'Unknown Role';
 				guildCache.adminRole = filteredAdminRoleId;
@@ -404,6 +437,7 @@ export default new Command({
 				const filteredAdminMemberId = adminMember.filter(
 					(value) => value !== removeMemberId
 				);
+
 				if (filteredAdminMemberId.length === adminMember.length)
 					return interaction.reply({
 						content: 'Member you input is invalid.',
@@ -411,6 +445,7 @@ export default new Command({
 					});
 				const member = interaction.guild.members.cache.get(removeMemberId);
 				let memberName: string;
+
 				if (member) memberName = member.displayName;
 				else memberName = 'Unknown Member';
 				guildCache.adminMember = filteredAdminMemberId;
@@ -438,6 +473,7 @@ export default new Command({
 				const filteredAdminCommandName = adminCommand.filter(
 					(value) => value !== removeCommand
 				);
+                
 				if (filteredAdminCommandName.length === adminCommand.length)
 					return interaction.reply({
 						content: 'Command you input is invalid.',

@@ -1,4 +1,4 @@
-import { CommandNameEmun } from './types/Command';
+/* eslint-disable no-unused-vars */
 
 declare global {
 	namespace NodeJS {

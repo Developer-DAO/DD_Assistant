@@ -1,4 +1,4 @@
-import { ChannelScan, Guilds } from '@prisma/client';
+import { ChannelInform, Guilds } from '@prisma/client';
 type Maybe<T> = T | null;
 
 export interface CacheType {
@@ -22,9 +22,17 @@ export interface VoiceContextCache {
 	duration: Maybe<number>;
 }
 
+export interface GuildChannelScan {
+	[parentId: string]: {
+		parentName: string;
+		channels: ChannelInformCache;
+	};
+}
+
 type GuildCache = Record<string, GuildInform>;
-type ChannelScanCache = Record<string, GuildChannelScan>;
+export type ChannelScanCache = Record<string, GuildChannelScan>;
+export type PartialChannelInform = Omit<ChannelInform, 'channelId'>;
+export type ChannelInformCache = Record<string, PartialChannelInform>;
 export type GuildInform = Omit<Guilds, 'discordId'>;
-export type GuildChannelScan = Omit<ChannelScan, 'discordId'>;
 
 export const MYNULL = '';

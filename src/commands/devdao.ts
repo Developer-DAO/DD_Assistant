@@ -1,5 +1,12 @@
-import { ActionRowBuilder, ApplicationCommandOptionType, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import {
+	ActionRowBuilder,
+	ApplicationCommandOptionType,
+	ButtonBuilder,
+	ButtonStyle,
+	EmbedBuilder
+} from 'discord.js';
 import { sprintf } from 'sprintf-js';
+
 import { Command } from '../structures/Command';
 import { DOCS } from '../utils/const';
 
@@ -25,7 +32,7 @@ export default new Command({
 		const query = args.getString('query');
 		const res = DOCS[query];
 
-        if (!res)
+		if (!res)
 			return interaction.reply({
 				content: 'Sorry, the query you input is invalid.',
 				ephemeral: true
@@ -58,6 +65,7 @@ export default new Command({
 				.setURL(res.link)
 				.setEmoji(res.emoji)
 		]);
+
 		if (user) {
 			return interaction.reply({
 				content: `<@${user.id}>`,
