@@ -11,12 +11,12 @@ datasource db {
 }
 
 model Guilds {
-    discordId               String          @id @map("_id")
-    adminCommand            String[]        @default([])
-    adminMember             String[]        @default([])
-    adminRole               String[]        @default([])
-    archiveCategoryChannels String[]        @default([])
-    archiveChannels         String[]        @default([])
+    discordId               String                     @id @map("_id")
+    adminCommand            String[]                   @default([])
+    adminMember             String[]                   @default([])
+    adminRole               String[]                   @default([])
+    archiveCategoryChannels String[]                   @default([])
+    autoArchiveInform       AutoArchiveChannelInform[]
     onboardSchedule         OnboardInform[]
     channels                ChannelSetting
     switch                  SwitchInform
@@ -42,7 +42,7 @@ type ChannelInform {
     lastMsgTimestamp String
     messageId        String
     status           Boolean
-    timestamp        String
+    archiveTimestamp String
 }
 
 type SwitchInform {
@@ -58,4 +58,9 @@ type Category {
 type OnboardInform {
     timestamp String
     eventLink String
+}
+
+type AutoArchiveChannelInform {
+    channelId String
+    remaining Int
 }

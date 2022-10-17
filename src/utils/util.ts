@@ -191,6 +191,19 @@ export function checkChannelPermission(channel: TextChannel, userId: string) {
 	return false;
 }
 
+export function checkToBeArchivedChannelPermission(channel: TextChannel, userId: string) {
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
+		return 'Missing **VIEW CHANNEL** access.';
+	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
+		return 'Missing **SEND MESSAGES** access.';
+	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
+		return 'Missing **MANAGE CHANNELS** access.';
+	}
+	return false;
+}
+
 export function checkIntroductionChannelPermission(channel: TextChannel, userId: string) {
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
 		return 'Missing **VIEW CHANNEL** access.';
@@ -378,7 +391,7 @@ export function serializeChannelScan(scanResult: ChannelScan): ChannelScanCache 
 			channelInform[channel.channelId] = {
 				channelName: channel.channelName,
 				lastMsgTimestamp: channel.lastMsgTimestamp,
-				timestamp: channel.timestamp,
+				archiveTimestamp: channel.archiveTimestamp,
 				messageId: channel.messageId,
 				status: channel.status
 			};
@@ -453,7 +466,7 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 					});
 
 					statusField = statusField.concat(
-						`> [Archived](${messageLink}) <t:${channels[channelId].timestamp}:R>\n`
+						`> [Archived](${messageLink}) <t:${channels[channelId].archiveTimestamp}:R>\n`
 					);
 				} else {
 					statusField = statusField.concat('> `unsent`\n');

@@ -7,14 +7,22 @@ import {
 	ChannelType,
 	ComponentType,
 	EmbedBuilder,
+	PermissionFlagsBits,
 	TextChannel
 } from 'discord.js';
+import _ from 'lodash';
+import { sprintf } from 'sprintf-js';
 
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
-import { NUMBER } from '../utils/const';
-import { deSerializeChannelScan, embedFieldsFactory, scanChannel } from '../utils/util';
+import { COMMAND_CONTENT, NUMBER } from '../utils/const';
+import {
+	checkToBeArchivedChannelPermission,
+	deSerializeChannelScan,
+	embedFieldsFactory,
+	scanChannel
+} from '../utils/util';
 
 export default new Command({
 	name: 'scan',
@@ -295,122 +303,130 @@ export default new Command({
 			// to-do archive channel permission checking
 			// to-do auto archive
 			// to-do using archive_status to auto archive
-			const { notificationChannel } = myCache.myGet('Guild')[guilId].channels;
-			const { archiveCategoryChannels, archiveChannels } = myCache.myGet('Guild')[guilId];
+			const guildChannelManager = interaction.guild.channels;
+
+			const { notificationChannel: notificationChannelId } =
+				myCache.myGet('Guild')[guilId].channels;
+			const notificationChannel = guildChannelManager.cache.get(
+				notificationChannelId
+			) as TextChannel;
 
 			if (!notificationChannel) {
+				return interaction.reply({
+					content: `Notification channel <#${notificationChannelId}> is unfetchable.`
+				});
+			}
+			const { archiveCategoryChannels, autoArchiveInform } = myCache.myGet('Guild')[guilId];
+
+			if (!notificationChannelId) {
 				return interaction.reply({
 					content: 'Please set up a notification channel first',
 					ephemeral: true
 				});
 			}
-			const guildChannelManager = interaction.guild.channels;
 			let scanResult = myCache.myGet('ChannelScan')[guilId];
 			const current = Math.floor(new Date().getTime() / 1000);
-			const toBeArchived: Array<TextChannel> = [];
+
+			type archiveInform = {
+				parentId: string;
+				channelId: string;
+			};
+			type successArchiveInform = archiveInform & {
+				currentParentId: string;
+			};
+			const toBeArchived: Array<archiveInform> = [];
 
 			Object.keys(scanResult).forEach((parentId) => {
-				const {channels} = scanResult[parentId];
-
-                toBeArchived.push(
-                    ...Object.keys(channels).filter((channelId) => {
-                        
-                    })
-                )
-			});
-			for (const parentId in scanResult) {
-				const channels = scanResult[parentId];
+				const { channels } = scanResult[parentId];
 
 				toBeArchived.push(
 					...Object.keys(channels)
-						.filter((channelId) => {
-							if (channelId == 'parentName') return false;
-							if (
-								channels[channelId].timestamp != 0 &&
-								current > channels[channelId].timestamp
-							)
-								return true;
-							else return false;
-						})
+						.filter(
+							(channelId) =>
+								channels[channelId].archiveTimestamp !== '0' &&
+								current > Number(channels[channelId].archiveTimestamp)
+						)
 						.map((channelId) => ({
 							parentId: parentId,
 							channelId: channelId
 						}))
 				);
-			}
-			if (toBeArchived.length == 0)
+			});
+
+			if (toBeArchived.length === 0) {
 				return interaction.reply({
 					content: 'No channel needs to be archived.',
 					ephemeral: true
 				});
+			}
 
-			const length = toBeArchived.length;
-			const notificationChannel = guildChannelManager.cache.get(notification_channel);
-			const limit = CONSTANT.BOT_NUMERICAL_VALUE.ARCHIVE_CHANNEL_CHILD_LIMIT;
+			const { length } = toBeArchived;
+
+			const limit = NUMBER.ARCHIVE_CHANNEL_CHILD_LIMIT;
 			let counter = 0;
-			const failChannels = [];
-			const successChannels = [];
+			const failChannels: Array<archiveInform> = [];
+			const successChannels: Array<successArchiveInform> = [];
+			const botId = interaction.guild.members.me.id;
 
 			await interaction.deferReply({ ephemeral: true });
 			while (true) {
-				const archiveChanneJSON = _.last(archive_channels);
-				let remainingSpace;
-				let targetArchieveChannelId;
+				const latestAutoArchiveInform = _.last(autoArchiveInform);
+				let remainingSpace: number;
+				let targetArchieveChannelId: string;
 
-				if (!archiveChanneJSON || archiveChanneJSON.remaining == 0) {
-					const archiveChannel = await guildChannelManager.create(
-						sprintf(
-							CONSTANT.CONTENT.ARCHIVE_CHANNEL_NAME_TEMPLATE,
-							archive_channels.length + 1
+				if (!latestAutoArchiveInform || latestAutoArchiveInform.remaining === 0) {
+					const archiveChannel = await guildChannelManager.create({
+						name: sprintf(
+							COMMAND_CONTENT.ARCHIVE_CHANNEL_NAME_TEMPLATE,
+							autoArchiveInform.length + 1
 						),
-						{
-							type: 'GUILD_CATEGORY',
-							permissionOverwrites: [
-								{
-									id: interaction.guild.id,
-									deny: [PermissionFlagsBits.ViewChannel]
-								}
-								// to-do deny dev to view this channel
-							]
-						}
-					);
+						type: ChannelType.GuildCategory,
+						permissionOverwrites: [
+							{
+								id: guilId,
+								deny: [PermissionFlagsBits.ViewChannel]
+							}
+						]
+					});
 
-					archive_channels.push({
-						id: archiveChannel.id,
+					autoArchiveInform.push({
+						channelId: archiveChannel.id,
 						remaining: limit
 					});
 					targetArchieveChannelId = archiveChannel.id;
 					remainingSpace = limit;
 				} else {
-					targetArchieveChannelId = archiveChanneJSON.id;
-					remainingSpace = archiveChanneJSON.remaining;
+					targetArchieveChannelId = latestAutoArchiveInform.channelId;
+					remainingSpace = latestAutoArchiveInform.remaining;
 				}
+
 				let moveCounter = 0;
 
 				for (const { parentId, channelId } of toBeArchived.slice(
 					counter,
 					counter + remainingSpace
 				)) {
-					const channel = guildChannelManager.cache.get(channelId);
+					const channel = guildChannelManager.cache.get(channelId) as TextChannel;
 
-					if (!channel)
+					if (!channel) {
 						return failChannels.push({
 							parentId: parentId,
 							channelId: channelId
 						});
+					}
 
-					const { result, error } = await awaitWrap(
-						channel.setParent(targetArchieveChannelId, {
-							lockPermissions: true,
-							reason: 'Inactive Channel'
-						})
-					);
+					const permissionChecking = checkToBeArchivedChannelPermission(channel, botId);
 
-					if (error)
+					if (permissionChecking) {
 						return failChannels.push({
 							parentId: parentId,
 							channelId: channelId
 						});
+					}
+					await channel.setParent(targetArchieveChannelId, {
+						lockPermissions: true,
+						reason: 'Inactive Channel'
+					});
 
 					successChannels.push({
 						parentId: parentId,
@@ -419,8 +435,8 @@ export default new Command({
 					});
 					moveCounter++;
 				}
-				archive_channels.splice(archive_channels.length - 1, 1, {
-					id: targetArchieveChannelId,
+				autoArchiveInform.splice(autoArchiveInform.length - 1, 1, {
+					channelId: targetArchieveChannelId,
 					remaining: remainingSpace - moveCounter
 				});
 				if (counter + remainingSpace > length) break;
@@ -428,28 +444,48 @@ export default new Command({
 			}
 
 			const toBeCachedArchiveCategoryChannel = _.uniq([
-				...archive_category_channel,
-				...archive_channels.map(({ id }) => id)
+				...archiveCategoryChannels,
+				...autoArchiveInform.map(({ channelId }) => channelId)
 			]);
 
-			await updateDb('archive_channels', archive_channels);
-			await updateDb('archive_category_channel', toBeCachedArchiveCategoryChannel);
-			myCache.set('GuildSetting', {
-				...myCache.get('GuildSetting'),
-				archive_channels: archive_channels,
-				archive_category_channel: toBeCachedArchiveCategoryChannel
+			await prisma.guilds.update({
+				where: {
+					discordId: guilId
+				},
+				data: {
+					archiveCategoryChannels: archiveCategoryChannels,
+					autoArchiveInform: autoArchiveInform
+				}
 			});
 
-			scanResult = myCache.get('ChannelsWithoutTopic');
+			myCache.mySet('Guild', {
+				...myCache.myGet('Guild'),
+				[guilId]: {
+					...myCache.myGet('Guild')[guilId],
+					archiveCategoryChannels: archiveCategoryChannels,
+					autoArchiveInform: autoArchiveInform
+				}
+			});
+
+			scanResult = myCache.myGet('ChannelScan')[guilId];
 			successChannels.forEach(({ parentId, channelId }) => {
-				delete scanResult[parentId][channelId];
+				delete scanResult[parentId].channels[channelId];
 				// Only 'parentName' attribute
-				if (Object.keys(scanResult[parentId]).length == 1) {
+				if (Object.keys(scanResult[parentId].channels).length === 0) {
 					delete scanResult[parentId];
 				}
 			});
-			await updateDb('channelsWithoutTopic', scanResult);
-			myCache.set('ChannelsWithoutTopic', scanResult);
+			await prisma.channelScan.update({
+				where: {
+					discordId: guilId
+				},
+				data: {
+					categories: scanResult
+				}
+			});
+			myCache.mySet('ChannelScan', {
+				[guilId]: scanResult
+			});
 
 			let failChannelsField = '> -';
 			let failChannelsParentsField = '> -';
@@ -468,7 +504,7 @@ export default new Command({
 				successChannelsPreviousParentsField += `<#${parentId}>\n`;
 			});
 			failChannels.forEach(({ parentId, channelId }, index) => {
-				if (index == 0) {
+				if (index === 0) {
 					failChannelsField = '';
 					failChannelsParentsField = '';
 				}
@@ -478,7 +514,7 @@ export default new Command({
 			// to-do consider the bytes exceeding the limit partition needed
 			await notificationChannel.send({
 				embeds: [
-					new MessageEmbed().setTitle('Archive Success Report').addFields([
+					new EmbedBuilder().setTitle('Archive Success Report').addFields([
 						{ name: 'Channel', value: successChannelsField, inline: true },
 						{
 							name: 'Current Parent',
@@ -491,14 +527,14 @@ export default new Command({
 							inline: true
 						}
 					]),
-					new MessageEmbed().setTitle('Archive Fail Report').addFields([
+					new EmbedBuilder().setTitle('Archive Fail Report').addFields([
 						{ name: 'Channel', value: failChannelsField, inline: true },
 						{ name: 'Current Parent', value: failChannelsParentsField, inline: true }
 					])
 				]
 			});
 			return interaction.followUp({
-				content: `Done, results has been sent to <#${notification_channel}>`
+				content: `Done, results has been sent to <#${notificationChannelId}>`
 			});
 		}
 	}

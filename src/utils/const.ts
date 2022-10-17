@@ -21,7 +21,8 @@ type NumericalProperty =
 	| 'ONBOARDING_DURATION'
 	| 'CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL'
 	| 'EMBED_CONTENT_LIMIT'
-	| 'SCAN_VIEW_DURATION';
+	| 'SCAN_VIEW_DURATION'
+	| 'ARCHIVE_CHANNEL_CHILD_LIMIT';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -37,7 +38,8 @@ type CommandContentPropery =
 	| 'WOMEN_THREAD_WELCOME_MSG'
 	| 'CHANNEL_WITHOUT_PARENT_PARENTID'
 	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
-	| 'DISCORD_MSG';
+	| 'DISCORD_MSG'
+	| 'ARCHIVE_CHANNEL_NAME_TEMPLATE';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
@@ -60,7 +62,8 @@ export const NUMBER: Numerical = {
 	ONBOARDING_DURATION: 60,
 	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000,
 	EMBED_CONTENT_LIMIT: 8,
-	SCAN_VIEW_DURATION: 5 * 60 * 1000
+	SCAN_VIEW_DURATION: 5 * 60 * 1000,
+	ARCHIVE_CHANNEL_CHILD_LIMIT: 30
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -83,7 +86,7 @@ export const defaultGuildInform: GuildInform = {
 	adminMember: [],
 	adminRole: [],
 	archiveCategoryChannels: [],
-	archiveChannels: [],
+	autoArchiveInform: [],
 	onboardSchedule: [],
 	channels: {
 		introductionChannel: MYNULL,
@@ -101,7 +104,7 @@ export const defaultGuildInform: GuildInform = {
 export const defaultPartialChannelInform: PartialChannelInform = {
 	channelName: '',
 	lastMsgTimestamp: '0',
-	timestamp: '0',
+	archiveTimestamp: '0',
 	status: false,
 	messageId: ''
 };
@@ -143,7 +146,8 @@ export const COMMAND_CONTENT: CommandContent = {
 		"Welcome to DevDAO Women :sparkles:\n\nDevDAO women is a Social Space for Women/Nonbinary/Ally folks within Developer DAO. :seedling:\n\nFirst say say gm on :rainbow:-gm to share the blissful energy:magic_wand:\n\nDid you pick your role yet?\n\nGo to <#960706880420859904> to pick your role.\n\nIf you identify as **Women/Nonbinary** then go for :purple_heart:\nIf **you don't identify as either of them/don't want to talk about your identity** then go for :orange_heart:\n\nIf you have any ideas/topic you wanna discuss, any questions you wanna ask or just want to send some cat pictures, them <#957712595056459938> is the place for you. :wave:\n\nDon't forget to check out <#999890882251722762> if you are looking for opportunities/looking to hire someone. :rainbow:\n\nOur team call happens in Every Friday 5.00 pm UTC. :rainbow:",
 	CHANNEL_WITHOUT_PARENT_PARENTID: '0',
 	CHANNEL_WITHOUT_PARENT_PARENTNAME: 'No Category Name',
-	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s'
+	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
+	ARCHIVE_CHANNEL_NAME_TEMPLATE: 'ARCHIVE---%s'
 };
 
 export const STICKYMSG: Readonly<MessageReplyOptions> = {
