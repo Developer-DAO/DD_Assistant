@@ -7,11 +7,14 @@ import {
 } from 'discord.js';
 
 import {
+	CacheType,
 	GuildChannelScan,
 	GuildInform,
 	MYNULL,
 	PartialChannelInform,
-	VoiceContextCache
+	StatusLock,
+	VoiceContextCache,
+	VoiceContextInform
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 
@@ -109,7 +112,7 @@ export const defaultPartialChannelInform: PartialChannelInform = {
 	messageId: ''
 };
 
-export const defaultVoiceContextCache: VoiceContextCache = {
+export const defaultVoiceContext: VoiceContextInform = {
 	attendees: {},
 	messageLink: null,
 	hostId: null,
@@ -118,6 +121,19 @@ export const defaultVoiceContextCache: VoiceContextCache = {
 };
 
 export const defaultChannelScanResult: GuildChannelScan = {};
+
+export const defaultStatusLock: StatusLock = {
+	archiveStatus: false,
+	broadcastStatus: false,
+	scanStatus: false
+};
+
+export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
+	ChannelScan: 'ChannelScan',
+	Guild: 'Guild',
+	StatusLock: 'StatusLock',
+	VoiceContext: 'VoiceContext'
+};
 
 interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandOptionChoiceData {
 	name: CommandNameEmun;

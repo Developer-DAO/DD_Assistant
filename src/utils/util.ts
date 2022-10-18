@@ -6,12 +6,15 @@ import {
 	Collection,
 	EmbedBuilder,
 	Guild,
+	GuildChannelManager,
 	Message,
 	PermissionFlagsBits,
 	TextChannel
 } from 'discord.js';
+import _ from 'lodash';
 import { sprintf } from 'sprintf-js';
 
+import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import {
 	ChannelInformCache,
@@ -482,5 +485,247 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 		channelFields: channelFields,
 		lastMsgTimeFields: lastMsgTimeFields,
 		statusFields: statusFields
+	};
+}
+
+export async function autoArchive(
+	guildChannelManager: GuildChannelManager,
+	guildId: string,
+	botId: string
+): Promise<{
+	error: boolean;
+	errorMessage?: string;
+	embeds?: Array<EmbedBuilder>;
+}> {
+	// to-do archive channel permission checking
+	// to-do auto archive
+	// to-do using archive_status to auto archive
+	const guildInform = myCache.myGet('Guild')[guildId];
+	const { notificationChannel: notificationChannelId } = guildInform.channels;
+	const notificationChannel = guildChannelManager.cache.get(notificationChannelId) as TextChannel;
+
+	if (!notificationChannel) {
+		return {
+			error: true,
+			errorMessage: `Notification channel <#${notificationChannelId}> is unfetchable.`
+		};
+	}
+	const { archiveCategoryChannels, autoArchiveInform } = guildInform;
+
+	if (!notificationChannelId) {
+		return {
+			error: true,
+			errorMessage: 'Please set up a notification channel first'
+		};
+	}
+	let scanResult = myCache.myGet('ChannelScan')[guildId];
+	const current = Math.floor(new Date().getTime() / 1000);
+
+	type archiveInform = {
+		parentId: string;
+		channelId: string;
+	};
+	type successArchiveInform = archiveInform & {
+		currentParentId: string;
+	};
+
+	const toBeArchived: Array<archiveInform> = [];
+
+	Object.keys(scanResult).forEach((parentId) => {
+		const { channels } = scanResult[parentId];
+
+		toBeArchived.push(
+			...Object.keys(channels)
+				.filter(
+					(channelId) =>
+						channels[channelId].archiveTimestamp !== '0' &&
+						current > Number(channels[channelId].archiveTimestamp)
+				)
+				.map((channelId) => ({
+					parentId: parentId,
+					channelId: channelId
+				}))
+		);
+	});
+
+	if (toBeArchived.length === 0) {
+		return {
+			error: true,
+			errorMessage: 'No channel needs to be archived.'
+		};
+	}
+
+	const { length } = toBeArchived;
+
+	const limit = NUMBER.ARCHIVE_CHANNEL_CHILD_LIMIT;
+	let counter = 0;
+	const failChannels: Array<archiveInform> = [];
+	const successChannels: Array<successArchiveInform> = [];
+
+	while (true) {
+		const latestAutoArchiveInform = _.last(autoArchiveInform);
+		let remainingSpace: number;
+		let targetArchieveChannelId: string;
+
+		if (!latestAutoArchiveInform || latestAutoArchiveInform.remaining === 0) {
+			const archiveChannel = await guildChannelManager.create({
+				name: sprintf(
+					COMMAND_CONTENT.ARCHIVE_CHANNEL_NAME_TEMPLATE,
+					autoArchiveInform.length + 1
+				),
+				type: ChannelType.GuildCategory,
+				permissionOverwrites: [
+					{
+						id: guildId,
+						deny: [PermissionFlagsBits.ViewChannel]
+					}
+				]
+			});
+
+			autoArchiveInform.push({
+				channelId: archiveChannel.id,
+				remaining: limit
+			});
+			targetArchieveChannelId = archiveChannel.id;
+			remainingSpace = limit;
+		} else {
+			targetArchieveChannelId = latestAutoArchiveInform.channelId;
+			remainingSpace = latestAutoArchiveInform.remaining;
+		}
+
+		let moveCounter = 0;
+
+		for (const { parentId, channelId } of toBeArchived.slice(
+			counter,
+			counter + remainingSpace
+		)) {
+			const channel = guildChannelManager.cache.get(channelId) as TextChannel;
+
+			if (!channel) {
+				failChannels.push({
+					parentId: parentId,
+					channelId: channelId
+				});
+				continue;
+			}
+
+			const permissionChecking = checkToBeArchivedChannelPermission(channel, botId);
+
+			if (permissionChecking) {
+				failChannels.push({
+					parentId: parentId,
+					channelId: channelId
+				});
+				continue;
+			}
+			await channel.setParent(targetArchieveChannelId, {
+				lockPermissions: true,
+				reason: 'Inactive Channel'
+			});
+
+			successChannels.push({
+				parentId: parentId,
+				channelId: channelId,
+				currentParentId: targetArchieveChannelId
+			});
+			moveCounter++;
+		}
+		autoArchiveInform.splice(autoArchiveInform.length - 1, 1, {
+			channelId: targetArchieveChannelId,
+			remaining: remainingSpace - moveCounter
+		});
+		if (counter + remainingSpace > length) break;
+		counter += remainingSpace;
+	}
+
+	const toBeCachedArchiveCategoryChannel = _.uniq([
+		...archiveCategoryChannels,
+		...autoArchiveInform.map(({ channelId }) => channelId)
+	]);
+
+	await prisma.guilds.update({
+		where: {
+			discordId: guildId
+		},
+		data: {
+			archiveCategoryChannels: toBeCachedArchiveCategoryChannel,
+			autoArchiveInform: autoArchiveInform
+		}
+	});
+
+	myCache.mySet('Guild', {
+		...myCache.myGet('Guild'),
+		[guildId]: {
+			...myCache.myGet('Guild')[guildId],
+			archiveCategoryChannels: toBeCachedArchiveCategoryChannel,
+			autoArchiveInform: autoArchiveInform
+		}
+	});
+
+	scanResult = myCache.myGet('ChannelScan')[guildId];
+	successChannels.forEach(({ parentId, channelId }) => {
+		delete scanResult[parentId].channels[channelId];
+		// Only 'parentName' attribute
+		if (Object.keys(scanResult[parentId].channels).length === 0) {
+			delete scanResult[parentId];
+		}
+	});
+	await prisma.channelScan.update({
+		where: {
+			discordId: guildId
+		},
+		data: {
+			categories: scanResult
+		}
+	});
+	myCache.mySet('ChannelScan', {
+		[guildId]: scanResult
+	});
+
+	let failChannelsField = '> -';
+	let failChannelsParentsField = '> -';
+	let successChannelsField = '> -';
+	let successChannelsParentsField = '> -';
+	let successChannelsPreviousParentsField = '> -';
+
+	successChannels.forEach(({ parentId, channelId, currentParentId }, index) => {
+		if (index === 0) {
+			successChannelsField = '';
+			successChannelsParentsField = '';
+			successChannelsPreviousParentsField = '';
+		}
+		successChannelsField += `<#${channelId}>\n`;
+		successChannelsParentsField += `<#${currentParentId}>\n`;
+		successChannelsPreviousParentsField += `<#${parentId}>\n`;
+	});
+	failChannels.forEach(({ parentId, channelId }, index) => {
+		if (index === 0) {
+			failChannelsField = '';
+			failChannelsParentsField = '';
+		}
+		failChannelsField += `<#${channelId}>\n`;
+		failChannelsParentsField += `<#${parentId}>\n`;
+	});
+	return {
+		error: false,
+		embeds: [
+			new EmbedBuilder().setTitle('Archive Success Report').addFields([
+				{ name: 'Channel', value: successChannelsField, inline: true },
+				{
+					name: 'Current Parent',
+					value: successChannelsParentsField,
+					inline: true
+				},
+				{
+					name: 'Previous Parent',
+					value: successChannelsPreviousParentsField,
+					inline: true
+				}
+			]),
+			new EmbedBuilder().setTitle('Archive Fail Report').addFields([
+				{ name: 'Channel', value: failChannelsField, inline: true },
+				{ name: 'Current Parent', value: failChannelsParentsField, inline: true }
+			])
+		]
 	};
 }

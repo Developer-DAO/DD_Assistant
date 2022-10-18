@@ -16,7 +16,7 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		guildName: interaction?.guild?.name
 	};
 
-	if (!myCache.myHases(['ChannelScan', 'Guild', 'VoiceContext'])) {
+	if (!myCache.allHas()) {
 		if (interaction.isAutocomplete()) {
 			return interaction.respond([]);
 		} else {

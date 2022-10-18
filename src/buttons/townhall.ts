@@ -3,13 +3,14 @@ import { sprintf } from 'sprintf-js';
 
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
-import { LINK } from '../utils/const';
+import { defaultVoiceContext, LINK } from '../utils/const';
 import { getCurrentTimeMin } from '../utils/util';
 
 export default new Button({
 	customIds: ['end'],
 	execute: async ({ interaction }) => {
-		const { hostId, attendees, duration } = myCache.myGet('VoiceContext');
+		const guildId = interaction.guild.id;
+		const { hostId, attendees, duration } = myCache.myGet('VoiceContext')[guildId];
 
 		if (interaction.user.id !== hostId)
 			return interaction.reply({
@@ -37,15 +38,18 @@ export default new Button({
 		const eligibleAttendees = Object.values(attendees)
 			.filter((value) => current - value.timestamp >= duration)
 			.map((value) => value.name);
-            
-		myCache.set('VoiceContext', {});
+
+		myCache.mySet('VoiceContext', {
+			...myCache.myGet('VoiceContext'),
+			[guildId]: defaultVoiceContext
+		});
 		if (eligibleAttendees.length === 0)
 			return interaction.followUp({
 				content: 'Sorry, none of eligible member in this event'
 			});
 		const universalBOM = '\uFEFF';
 		let csvContent = universalBOM + 'Discord Name\r\n';
-        
+
 		csvContent = eligibleAttendees.reduce((pre, cur) => {
 			return pre + cur + '\r\n';
 		}, csvContent);

@@ -34,7 +34,8 @@ export default new Command({
 		}
 	],
 	execute: async ({ interaction, args }) => {
-		const guildVoiceContext = myCache.myGet('VoiceContext');
+		const guildId = interaction.guild.id;
+		const guildVoiceContext = myCache.myGet('VoiceContext')[guildId];
 
 		if (!guildVoiceContext.channelId) {
 			return interaction.reply({
@@ -103,13 +104,16 @@ export default new Command({
 			});
 
 			myCache.mySet('VoiceContext', {
-				attendees: {
-					...membersVoiceInform
-				},
-				messageLink: msgLink,
-				hostId: interaction.user.id,
-				channelId: voiceChannel.id,
-				duration: rewardDuration * 60
+				...myCache.myGet('VoiceContext'),
+				[guildId]: {
+					attendees: {
+						...membersVoiceInform
+					},
+					messageLink: msgLink,
+					hostId: interaction.user.id,
+					channelId: voiceChannel.id,
+					duration: rewardDuration * 60
+				}
 			});
 
 			return interaction.followUp({
