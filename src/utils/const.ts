@@ -1,3 +1,4 @@
+import { ChannelInform } from '@prisma/client';
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionChoiceData,
@@ -25,7 +26,8 @@ type NumericalProperty =
 	| 'CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL'
 	| 'EMBED_CONTENT_LIMIT'
 	| 'SCAN_VIEW_DURATION'
-	| 'ARCHIVE_CHANNEL_CHILD_LIMIT';
+	| 'ARCHIVE_CHANNEL_CHILD_LIMIT'
+	| 'ARCHIVE_EXPIRY_TIME';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -42,7 +44,8 @@ type CommandContentPropery =
 	| 'CHANNEL_WITHOUT_PARENT_PARENTID'
 	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
 	| 'DISCORD_MSG'
-	| 'ARCHIVE_CHANNEL_NAME_TEMPLATE';
+	| 'ARCHIVE_CHANNEL_NAME_TEMPLATE'
+	| 'NOTIFICATION_MSG';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
@@ -66,7 +69,8 @@ export const NUMBER: Numerical = {
 	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000,
 	EMBED_CONTENT_LIMIT: 8,
 	SCAN_VIEW_DURATION: 5 * 60 * 1000,
-	ARCHIVE_CHANNEL_CHILD_LIMIT: 30
+	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
+	ARCHIVE_EXPIRY_TIME: 72 * 3600
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -122,6 +126,15 @@ export const defaultVoiceContext: VoiceContextInform = {
 
 export const defaultChannelScanResult: GuildChannelScan = {};
 
+export const defaultChannelInform: ChannelInform = {
+	archiveTimestamp: '0',
+	lastMsgTimestamp: '0',
+	channelId: '',
+	messageId: '',
+	channelName: '',
+	status: false
+}
+
 export const defaultStatusLock: StatusLock = {
 	archiveStatus: false,
 	broadcastStatus: false,
@@ -163,7 +176,9 @@ export const COMMAND_CONTENT: CommandContent = {
 	CHANNEL_WITHOUT_PARENT_PARENTID: '0',
 	CHANNEL_WITHOUT_PARENT_PARENTNAME: 'No Category Name',
 	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
-	ARCHIVE_CHANNEL_NAME_TEMPLATE: 'ARCHIVE---%s'
+	ARCHIVE_CHANNEL_NAME_TEMPLATE: 'ARCHIVE---%s',
+	NOTIFICATION_MSG:
+		'Hi, D_Ds in <#%(channelId)s>\n\nAs there has been no action taken on our request to add a description to this channel, we have interpreted this as the channel is not of material importance to the server. Therefore it has been queued for archiving.\n\nChannels that do not have a description, fall out of compliance with the new standards being established by the Server Architecture Team — as it makes it difficult for Developer DAO members to be easily navigate our Discord, and find information quickly.\n\n**We are going to archive this channel <t:%(timestamp)s:R> from this notice being sent out ⚠️**\n\nIf you believe that this channel is important and should remain, please let us know in the <#993496711798456380> channel, by creating a thread using the format below:\n\n**Thread Name**: `re [insert channel name]`\n\nThanks for your cooperation! 🧰'
 };
 
 export const STICKYMSG: Readonly<MessageReplyOptions> = {

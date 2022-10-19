@@ -8,6 +8,7 @@ import {
 	Guild,
 	GuildChannelManager,
 	Message,
+	NonThreadGuildBasedChannel,
 	PermissionFlagsBits,
 	TextChannel
 } from 'discord.js';
@@ -22,9 +23,10 @@ import {
 	GuildChannelScan,
 	GuildInform
 } from '../types/Cache';
-import { parentChannelInform } from '../types/Util';
+import { awaitWrapSendRequestReturnValue, parentChannelInform } from '../types/Util';
 import {
 	COMMAND_CONTENT,
+	defaultChannelInform,
 	defaultPartialChannelInform,
 	ERROR_REPLY,
 	MONTH,
@@ -75,6 +77,27 @@ export async function awaitWrapWithTimeout<T>(
 			return {
 				result: null,
 				error: error
+			};
+		});
+}
+
+export async function awaitWrapSendRequest(
+	promise: Promise<Message>,
+	channelId: string
+): Promise<awaitWrapSendRequestReturnValue> {
+	return promise
+		.then((data) => {
+			return {
+				error: false,
+				createdTimestamp: Math.floor(data.createdTimestamp / 1000).toString(),
+				messageId: data.id,
+				channelId: channelId
+			};
+		})
+		.catch((err) => {
+			return {
+				error: true,
+				channelId: channelId
 			};
 		});
 }
@@ -239,6 +262,13 @@ export function checkTownHallChannelPermission(channel: TextChannel, userId: str
 	return false;
 }
 
+export function getNotificationMsg(channelId: string, timestamp: number) {
+	return sprintf(COMMAND_CONTENT.NOTIFICATION_MSG, {
+		channelId: channelId,
+		timestamp: timestamp.toString()
+	});
+}
+
 export async function stickyMsgHandler(
 	curChannel: TextChannel,
 	botId: string,
@@ -308,7 +338,7 @@ export function convertTimeStamp(timestampInSec) {
 	});
 }
 
-function getParentInform(parentId: string, parentObj: CategoryChannel): parentChannelInform {
+export function getParentInform(parentId: string, parentObj: CategoryChannel): parentChannelInform {
 	const id = parentId ?? COMMAND_CONTENT.CHANNEL_WITHOUT_PARENT_PARENTID;
 	const name =
 		id !== COMMAND_CONTENT.CHANNEL_WITHOUT_PARENT_PARENTID
@@ -728,4 +758,69 @@ export async function autoArchive(
 			])
 		]
 	};
+}
+
+export async function deleteChannelHandler(
+	deletedChannel: NonThreadGuildBasedChannel,
+	parentId: string,
+	guildId: string
+) {
+	const scanResult = myCache.myGet('ChannelScan')[guildId];
+
+	delete scanResult[parentId].channels[deletedChannel.id];
+	if (Object.keys(scanResult[parentId].channels).length === 0) {
+		delete scanResult[parentId];
+	}
+	await prisma.channelScan.update({
+		where: {
+			discordId: guildId
+		},
+		data: {
+			categories: scanResult
+		}
+	});
+	myCache.mySet('ChannelScan', {
+		...myCache.myGet('ChannelScan'),
+		[guildId]: scanResult
+	});
+	return;
+}
+
+export async function createChannelHandler(
+	newChannel: NonThreadGuildBasedChannel,
+	parentId: string,
+	parentName: string,
+	guildId: string
+) {
+	const scanResult = myCache.myGet('ChannelScan')[guildId];
+
+	if (parentId in scanResult) {
+		scanResult[parentId].channels[newChannel.id] = {
+			...defaultChannelInform,
+			channelName: newChannel.name
+		};
+	} else {
+		scanResult[parentId] = {
+			parentName: parentName,
+			channels: {
+				[newChannel.id]: {
+					...defaultChannelInform,
+					channelName: newChannel.name
+				}
+			}
+		};
+	}
+	await prisma.channelScan.update({
+		where: {
+			discordId: guildId
+		},
+		data: {
+			categories: scanResult
+		}
+	});
+	myCache.mySet('ChannelScan', {
+		...myCache.myGet('ChannelScan'),
+		[guildId]: scanResult
+	});
+	return
 }

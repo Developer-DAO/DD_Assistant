@@ -13,11 +13,16 @@ import {
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { awaitWrapSendRequestReturnValue } from '../types/Util';
 import { NUMBER } from '../utils/const';
 import {
 	autoArchive,
+	awaitWrap,
+	awaitWrapSendRequest,
+	checkChannelPermission,
 	deSerializeChannelScan,
 	embedFieldsFactory,
+	getNotificationMsg,
 	scanChannel
 } from '../utils/util';
 
@@ -85,6 +90,7 @@ export default new Command({
 	execute: async ({ interaction, args }) => {
 		const guildId = interaction.guild.id;
 		const subcommandName = args.getSubcommand();
+		const { commandId } = interaction;
 		const statusLockCache = myCache.myGet('StatusLock');
 		const guildStatusLockCache = statusLockCache[guildId];
 		const { scanStatus, archiveStatus, broadcastStatus } = statusLockCache[guildId];
@@ -134,7 +140,7 @@ export default new Command({
 				}
 			});
 			return interaction.editReply({
-				content: `Channel Scan is completed, use </scan view:${interaction.command.id}> to check results`
+				content: `Channel Scan is completed, use </scan view:${commandId}> to check results`
 			});
 		}
 
@@ -176,7 +182,7 @@ export default new Command({
 
 			if (!scanResult && Object.keys(scanResult).length === 0) {
 				return interaction.followUp({
-					content: `Please use </scan view:${interaction.command.id}> to init channel scan.`
+					content: `Please use </scan view:${commandId}> to init channel scan.`
 				});
 			}
 
@@ -380,92 +386,130 @@ export default new Command({
 				}
 			});
 			await interaction.deferReply({ ephemeral: true });
-			const sendMsgRequestArray = [];
-			const unfetchableChannelNameArray = [];
-			let unfetchableChannelNameContent = '';
-			let failSendMsgChannelIdContent = '';
-			let cached = myCache.get('ChannelsWithoutTopic');
-			const broadcastResult = {};
+			const botId = interaction.guild.members.me.id;
+			const sendMsgRequestArray: Array<Promise<awaitWrapSendRequestReturnValue>> = [];
+			const unfetchableChannelNameArray: Array<string> = [];
+			const failSendMsgChannelIdArray: Array<string> = [];
+			const scanResult = myCache.myGet('ChannelScan')[guildId];
+			const broadcastResult: {
+				[channelId: string]: {
+					messageId: string;
+					timestamp: string;
+				};
+			} = {};
 
-			for (const parentId in cached) {
-				const channels = cached[parentId];
+			for (const parentId of Object.keys(scanResult)) {
+				const channels = scanResult[parentId];
 
-				for (const channelId in channels) {
-					if (channelId == 'parentName') continue;
+				for (const channelId of Object.keys(channels.channels)) {
+					const channel = interaction.guild.channels.cache.get(channelId) as TextChannel;
 
-					const channel = interaction.guild.channels.cache.get(channelId);
+					broadcastResult[channelId] = {
+						messageId: '',
+						timestamp: ''
+					};
+					if (!channel) {
+						unfetchableChannelNameArray.push(channels[channelId].channelName);
+					} else {
+						const permissionCheckingResult = checkChannelPermission(channel, botId);
 
-					broadcastResult[channelId] = '';
-					if (!channel) unfetchableChannelNameArray.push(channels[channelId].channelName);
-					else {
-						sendMsgRequestArray.push(
-							awaitWrapSendRequest(
-								channel.send({
-									content: getNotificationMsg(
-										channel.id,
-										Math.floor(new Date().getTime() / 1000) +
-											CONSTANT.BOT_NUMERICAL_VALUE.EXPIRY_TIME
-									)
-								}),
-								channel.id
-							)
-						);
+						if (permissionCheckingResult) {
+							failSendMsgChannelIdArray.push(channelId);
+						} else {
+							sendMsgRequestArray.push(
+								awaitWrapSendRequest(
+									channel.send({
+										content: getNotificationMsg(
+											channel.id,
+											Math.floor(new Date().getTime() / 1000) +
+												NUMBER.ARCHIVE_EXPIRY_TIME
+										)
+									}),
+									channelId
+								)
+							);
+						}
 					}
 				}
 			}
 
 			const { result, error } = await awaitWrap(Promise.all(sendMsgRequestArray));
 
-			if (error)
-				interaction.editReply({
-					content: `Broadcast failed, error occured: \`${error}\``,
-					components: changedComponents
+			if (error) {
+				myCache.mySet('StatusLock', {
+					...statusLockCache,
+					[guildId]: {
+						...guildStatusLockCache,
+						broadcastStatus: false
+					}
 				});
+				return interaction.followUp({
+					content: `Broadcast failed, error occured: \`${error}\``
+				});
+			}
 
 			result.forEach((value) => {
-				if (value.error) failSendMsgChannelIdContent += `> <#${value.value}>\n`;
-				else
+				if (value.error) {
+					failSendMsgChannelIdArray.push(value.channelId);
+				} else
 					broadcastResult[value.channelId] = {
 						messageId: value.messageId,
-						timestamp: value.value
+						timestamp: value.createTimestamp
 					};
 			});
 
-			if (failSendMsgChannelIdContent == '') failSendMsgChannelIdContent = '> -';
+			const failSendMsgChannelContent =
+				failSendMsgChannelIdArray.reduce((pre, cur) => {
+					return pre + `> <#${cur}>\n`;
+				}, '') ?? '> -';
+			const unfetchableChannelNameContent =
+				unfetchableChannelNameArray.reduce((pre, cur) => {
+					return pre + `> \`${cur}\`\n`;
+				}, '') ?? '> -';
 
-			if (unfetchableChannelNameArray.length == 0) unfetchableChannelNameContent = '> -';
-			else
-				unfetchableChannelNameArray.forEach((value) => {
-					unfetchableChannelNameContent += `> \`${value}\`\n`;
-				});
-
-			cached = myCache.get('ChannelsWithoutTopic');
-			Object.keys(cached).forEach((parentId) => {
-				const channels = cached[parentId];
+			Object.keys(scanResult).forEach((parentId) => {
+				const channels = scanResult[parentId].channels;
 
 				Object.keys(channels).forEach((channelId) => {
-					if (broadcastResult[channelId]) {
-						cached[parentId][channelId] = {
-							...cached[parentId][channelId],
+					const { messageId, timestamp } = broadcastResult[channelId];
+
+					if (messageId) {
+						scanResult[parentId].channels[channelId] = {
+							channelName: scanResult[parentId].channels[channelId].channelName,
 							status: true,
-							messageId: broadcastResult[channelId].messageId,
-							timestamp:
-								broadcastResult[channelId].timestamp +
-								CONSTANT.BOT_NUMERICAL_VALUE.EXPIRY_TIME,
-							lastMessageTimestamp: broadcastResult[channelId].timestamp
+							messageId: messageId,
+							archiveTimestamp: timestamp + NUMBER.ARCHIVE_EXPIRY_TIME,
+							lastMsgTimestamp: timestamp
 						};
 					}
 				});
 			});
-			await updateDb('channelsWithoutTopic', cached);
-			myCache.set('ChannelsWithoutTopic', cached);
+			prisma.channelScan.update({
+				where: {
+					discordId: guildId
+				},
+				data: {
+					categories: scanResult
+				}
+			});
+			myCache.mySet('ChannelScan', {
+				...myCache.myGet('ChannelScan'),
+				[guildId]: scanResult
+			});
+			myCache.mySet('StatusLock', {
+				...statusLockCache,
+				[guildId]: {
+					...guildStatusLockCache,
+					broadcastStatus: false
+				}
+			});
 
-			return interaction.editReply({
+			return interaction.followUp({
 				embeds: [
-					new MessageEmbed()
+					new EmbedBuilder()
 						.setTitle('📣 Broadcast Report')
 						.setDescription(
-							'**Unfetchable**: The bot cannot fetch information of these channels.\n\n**Unsendable**: The bot cannot send messages to these channels with unknown reason.'
+							'**Unfetchable**: The bot cannot fetch information of these channels.\n\n**Unsendable**: The bot cannot send messages to these channels with an unknown reason.'
 						)
 						.addFields([
 							{
@@ -475,14 +519,12 @@ export default new Command({
 							},
 							{
 								name: 'Fail to send',
-								value: failSendMsgChannelIdContent,
+								value: failSendMsgChannelContent,
 								inline: true
 							}
 						])
 				],
-				components: [],
-				content:
-					'Broadcast is done, please run `/channelmanager view` again to view results'
+				content: `Broadcast is done, please run </scan view: ${commandId}> again to view results`
 			});
 		}
 	}

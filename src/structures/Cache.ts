@@ -32,7 +32,7 @@ class MyCache extends NodeCache {
 		}, true);
 	}
 
-	public allHas() {
+	public myHasAll() {
 		return Object.keys(CACHE_KEYS).reduce((pre, cur) => {
 			return pre && super.has(cur);
 		}, true);

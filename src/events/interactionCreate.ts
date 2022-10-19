@@ -16,7 +16,7 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		guildName: interaction?.guild?.name
 	};
 
-	if (!myCache.allHas()) {
+	if (!myCache.myHasAll()) {
 		if (interaction.isAutocomplete()) {
 			return interaction.respond([]);
 		} else {
