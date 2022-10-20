@@ -1,4 +1,5 @@
-import { ChannelInform } from '@prisma/client';
+/* eslint-disable no-unused-vars */
+import { ChannelSetting } from '@prisma/client';
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionChoiceData,
@@ -14,7 +15,6 @@ import {
 	MYNULL,
 	PartialChannelInform,
 	StatusLock,
-	VoiceContextCache,
 	VoiceContextInform
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
@@ -27,7 +27,8 @@ type NumericalProperty =
 	| 'EMBED_CONTENT_LIMIT'
 	| 'SCAN_VIEW_DURATION'
 	| 'ARCHIVE_CHANNEL_CHILD_LIMIT'
-	| 'ARCHIVE_EXPIRY_TIME';
+	| 'ARCHIVE_EXPIRY_TIME'
+	| 'AUTO_ARCHIVE_INTERVL';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -70,7 +71,8 @@ export const NUMBER: Numerical = {
 	EMBED_CONTENT_LIMIT: 8,
 	SCAN_VIEW_DURATION: 5 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
-	ARCHIVE_EXPIRY_TIME: 72 * 3600
+	ARCHIVE_EXPIRY_TIME: 72 * 3600,
+	AUTO_ARCHIVE_INTERVL: 30 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -92,7 +94,6 @@ export const defaultGuildInform: GuildInform = {
 	adminCommand: [],
 	adminMember: [],
 	adminRole: [],
-	archiveCategoryChannels: [],
 	autoArchiveInform: [],
 	onboardSchedule: [],
 	channels: {
@@ -101,10 +102,11 @@ export const defaultGuildInform: GuildInform = {
 		notificationChannel: MYNULL,
 		onboardNotificationChannel: MYNULL,
 		onboardChannel: MYNULL,
-		celebrateChannel: MYNULL
+		celebrateChannel: MYNULL,
+		archiveCategoryChannels: []
 	},
 	switch: {
-		autoArchive: false
+		autoArchiveSwitch: false
 	}
 };
 
@@ -121,19 +123,11 @@ export const defaultVoiceContext: VoiceContextInform = {
 	messageLink: null,
 	hostId: null,
 	channelId: null,
-	duration: null
+	duration: null,
+	messageId: null
 };
 
 export const defaultChannelScanResult: GuildChannelScan = {};
-
-export const defaultChannelInform: ChannelInform = {
-	archiveTimestamp: '0',
-	lastMsgTimestamp: '0',
-	channelId: '',
-	messageId: '',
-	channelName: '',
-	status: false
-}
 
 export const defaultStatusLock: StatusLock = {
 	archiveStatus: false,
@@ -147,6 +141,26 @@ export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	StatusLock: 'StatusLock',
 	VoiceContext: 'VoiceContext'
 };
+export enum ChannelOptionName {
+	celebration = 'celebration',
+	notification = 'notification',
+	introduction = 'introduction',
+	women_introduction = 'women_introduction',
+	onboarding = 'onboarding',
+	onboarding_notification = 'onboarding_notification',
+	archive = 'archive'
+}
+export const channelOptionNameToDBPropery: Readonly<
+	Record<ChannelOptionName, keyof ChannelSetting>
+> = {
+	celebration: 'celebrateChannel',
+	notification: 'notificationChannel',
+	introduction: 'introductionChannel',
+	women_introduction: 'womenIntroductionChannel',
+	onboarding: 'onboardChannel',
+	onboarding_notification: 'onboardNotificationChannel',
+	archive: 'archiveCategoryChannels'
+};
 
 interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandOptionChoiceData {
 	name: CommandNameEmun;
@@ -156,7 +170,7 @@ interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandO
 export const COMMAND_CONTENT: CommandContent = {
 	ONBOARDING_CALL_EVENT_NAME: 'Group Onboarding Call',
 	CHANNEL_SETTING_FAIL_REPLY:
-		'Fail to set <#%(targetChannelId)s> as %(setChannelName)s channel, because of `%(reason)s`.',
+		'Fail to set <#%(targetChannelId)s> as %(setChannelName)s channel, because of %(reason)s.',
 	CHANNEL_SETTING_SUCCESS_REPLY:
 		'Success to set <#%(targetChannelId)s> as %(setChannelName)s channel.',
 	INTRODUCTION:
@@ -168,7 +182,7 @@ export const COMMAND_CONTENT: CommandContent = {
 	ONBOARDING_END:
 		'Onboarding calls for this week have ended. We will update the latest ones this Sunday or next Monday.',
 	ONBOARDING_OPTION: '%(index)d. %(timestamp)s.',
-	WELCOME_THREAD_NAME: 'Welcome <@%s>',
+	WELCOME_THREAD_NAME: 'Welcome %s',
 	THREAD_WELCOME_MSG:
 		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:1016532004185063464> and choose a query.',
 	WOMEN_THREAD_WELCOME_MSG:
@@ -182,8 +196,7 @@ export const COMMAND_CONTENT: CommandContent = {
 };
 
 export const STICKYMSG: Readonly<MessageReplyOptions> = {
-	content:
-		'Click the button to check your transaction status. Transaction results from the bot are only VIEWABLE by you (and no one else).',
+	content: COMMAND_CONTENT.INTRODUCTION,
 	components: [
 		new ActionRowBuilder<ButtonBuilder>().addComponents([
 			new ButtonBuilder()
@@ -205,12 +218,6 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 	]
 };
 
-export const EMOJI = {
-	// ✅
-	CHECK_MARK: '1029777569303765044',
-	// ❌
-	WRONG: '1029777597707603988'
-};
 
 export const COMMAND_CHOICES: Array<ExtendedApplicationCommandOptionChoiceData> = [
 	{

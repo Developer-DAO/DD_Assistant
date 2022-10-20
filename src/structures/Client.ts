@@ -23,9 +23,11 @@ import {
 	defaultChannelScanResult,
 	defaultGuildInform,
 	defaultStatusLock,
-	defaultVoiceContext
+	defaultVoiceContext,
+	NUMBER
 } from '../utils/const';
 import { logger } from '../utils/logger';
+import { autoArchive, checkStickyAndInit, deSerializeChannelScan } from '../utils/util';
 import { myCache } from './Cache';
 import { Event } from './Event';
 
@@ -138,6 +140,8 @@ export class MyClient extends Client {
 		this.once('ready', async () => {
 			await this.guilds.fetch();
 			await this._cacheInit();
+			await this._loadSticky();
+			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
 			if (process.env.MODE === 'dev') {
 				await this._registerCommands({
 					guildId: process.env.GUILDID,
@@ -216,12 +220,45 @@ export class MyClient extends Client {
 				myCache.mySet('ChannelScan', {
 					[process.env.GUILDID]: defaultChannelScanResult
 				});
+			} else {
+				myCache.mySet('ChannelScan', deSerializeChannelScan(guildChannelScan));
 			}
 			logger.info(`\n${this.table.toString()}`);
 		} catch (error) {
 			// todo handle errors correctly
 			logger.error(error);
 			process.exit(0);
+		}
+	}
+
+	private async _guildsAutoArchive(client: MyClient) {
+		const guildsInform = myCache.myGet('Guild');
+
+		for (const [guildId, guild] of client.guilds.cache) {
+			const { autoArchiveSwitch } = guildsInform[guildId].switch;
+
+			if (autoArchiveSwitch) {
+				await autoArchive(guild.channels, guildId, guild.members.me.id);
+			}
+		}
+	}
+
+	private async _loadSticky() {
+		const guildsCache = myCache.myGet('Guild');
+
+		for (const [guildId, guild] of this.guilds.cache) {
+			if (guild.available) {
+				const { introductionChannel, womenIntroductionChannel } =
+					guildsCache[guildId].channels;
+				const botId = guild.members.me.id;
+
+				if (introductionChannel) {
+					await checkStickyAndInit(guild.channels, introductionChannel, botId);
+				}
+				if (womenIntroductionChannel) {
+					await checkStickyAndInit(guild.channels, womenIntroductionChannel, botId);
+				}
+			}
 		}
 	}
 }

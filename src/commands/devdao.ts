@@ -3,12 +3,14 @@ import {
 	ApplicationCommandOptionType,
 	ButtonBuilder,
 	ButtonStyle,
-	EmbedBuilder
+	EmbedBuilder,
+	TextChannel
 } from 'discord.js';
 import { sprintf } from 'sprintf-js';
 
 import { Command } from '../structures/Command';
 import { DOCS } from '../utils/const';
+import { checkChannelPermission } from '../utils/util';
 
 export default new Command({
 	name: 'devdao',
@@ -43,7 +45,17 @@ export default new Command({
 				content: 'Sorry, you cannot choose a bot as a target.',
 				ephemeral: true
 			});
+		const permissionCheckingResult = checkChannelPermission(
+			interaction.channel as TextChannel,
+			interaction.guild.members.me.id
+		);
 
+		if (permissionCheckingResult) {
+			return interaction.reply({
+				content: permissionCheckingResult,
+				ephemeral: true
+			});
+		}
 		const resEmbed = new EmbedBuilder()
 			.setTitle(res.index)
 			.setDescription(

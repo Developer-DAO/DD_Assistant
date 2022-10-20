@@ -11,15 +11,14 @@ datasource db {
 }
 
 model Guilds {
-    discordId               String                     @id @map("_id")
-    adminCommand            String[]                   @default([])
-    adminMember             String[]                   @default([])
-    adminRole               String[]                   @default([])
-    archiveCategoryChannels String[]                   @default([])
-    autoArchiveInform       AutoArchiveChannelInform[]
-    onboardSchedule         OnboardInform[]
-    channels                ChannelSetting
-    switch                  SwitchInform
+    discordId         String                     @id @map("_id")
+    adminCommand      String[]                   @default([])
+    adminMember       String[]                   @default([])
+    adminRole         String[]                   @default([])
+    autoArchiveInform AutoArchiveChannelInform[]
+    onboardSchedule   OnboardInform[]
+    channels          ChannelSetting
+    switch            SwitchInform
 }
 
 model ChannelScan {
@@ -28,12 +27,13 @@ model ChannelScan {
 }
 
 type ChannelSetting {
-    introductionChannel        String @default("")
-    womenIntroductionChannel   String @default("")
-    notificationChannel        String @default("")
-    onboardChannel             String @default("")
-    celebrateChannel           String @default("")
-    onboardNotificationChannel String @default("")
+    introductionChannel        String   @default("")
+    womenIntroductionChannel   String   @default("")
+    notificationChannel        String   @default("")
+    onboardChannel             String   @default("")
+    celebrateChannel           String   @default("")
+    onboardNotificationChannel String   @default("")
+    archiveCategoryChannels    String[] @default([])
 }
 
 type ChannelInform {
@@ -46,7 +46,7 @@ type ChannelInform {
 }
 
 type SwitchInform {
-    autoArchive Boolean
+    autoArchiveSwitch Boolean
 }
 
 type Category {

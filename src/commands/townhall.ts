@@ -13,7 +13,7 @@ import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { MemberVoiceInform } from '../types/Cache';
 import { LINK } from '../utils/const';
-import { getCurrentTimeMin } from '../utils/util';
+import { checkVoiceChannelPermission, getCurrentTimeMin } from '../utils/util';
 
 export default new Command({
 	name: 'townhall',
@@ -37,7 +37,7 @@ export default new Command({
 		const guildId = interaction.guild.id;
 		const guildVoiceContext = myCache.myGet('VoiceContext')[guildId];
 
-		if (!guildVoiceContext.channelId) {
+		if (guildVoiceContext.channelId) {
 			return interaction.reply({
 				content: 'Sorry, the town hall is going on now.',
 				components: [
@@ -54,6 +54,18 @@ export default new Command({
 		} else {
 			const voiceChannel = args.getChannel('channel') as VoiceChannel;
 			const rewardDuration = args.getInteger('reward_duration');
+
+			const permissionCheckingResult = checkVoiceChannelPermission(
+				voiceChannel,
+				interaction.guild.members.me.id
+			);
+
+			if (permissionCheckingResult) {
+				return interaction.reply({
+					content: permissionCheckingResult,
+					ephemeral: true
+				});
+			}
 
 			if (rewardDuration <= 0)
 				return interaction.reply({
@@ -112,7 +124,8 @@ export default new Command({
 					messageLink: msgLink,
 					hostId: interaction.user.id,
 					channelId: voiceChannel.id,
-					duration: rewardDuration * 60
+					duration: rewardDuration * 60,
+					messageId: msg.id
 				}
 			});
 

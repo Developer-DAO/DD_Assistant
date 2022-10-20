@@ -27,6 +27,7 @@ export interface VoiceContextInform {
 	hostId: Maybe<string>;
 	channelId: Maybe<string>;
 	duration: Maybe<number>;
+	messageId: Maybe<string>;
 }
 
 export interface GuildChannelScan {
@@ -42,6 +43,6 @@ export type PartialChannelInform = Omit<ChannelInform, 'channelId'>;
 export type ChannelInformCache = Record<string, PartialChannelInform>;
 export type GuildInform = Omit<Guilds, 'discordId'>;
 export type StatusLockCache = Record<string, StatusLock>;
-export type VoiceContextCache = Record<string, VoiceContextInform>
+export type VoiceContextCache = Record<string, VoiceContextInform>;
 
 export const MYNULL = '';

@@ -1,3 +1,4 @@
+/* eslint-disable no-empty-function */
 import { ClientEvents } from 'discord.js';
 
 // Key's value has to be the attribute names of ClientEvents

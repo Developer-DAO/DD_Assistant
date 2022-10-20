@@ -21,11 +21,6 @@ export default new Event('voiceStateUpdate', (oldState: VoiceState, newState: Vo
 			name: newState.member.displayName
 		};
 		// Jump out from this event
-	} else if (
-		oldState?.channel?.id === guildVoiceContext.channelId &&
-		newState?.channel?.id !== guildVoiceContext.channelId
-	) {
-		delete guildVoiceContext.attendees[newState.member.id];
 	} else return;
 	myCache.mySet('VoiceContext', {
 		...myCache.myGet('VoiceContext'),

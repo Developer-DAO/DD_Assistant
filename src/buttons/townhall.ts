@@ -10,13 +10,21 @@ export default new Button({
 	customIds: ['end'],
 	execute: async ({ interaction }) => {
 		const guildId = interaction.guild.id;
-		const { hostId, attendees, duration } = myCache.myGet('VoiceContext')[guildId];
+		const { hostId, attendees, duration, messageId } = myCache.myGet('VoiceContext')[guildId];
 
-		if (interaction.user.id !== hostId)
+		if (interaction.message.id !== messageId) {
+			return interaction.reply({
+				content: 'Sorry, cannot find this Town Hall, please set up a new one',
+				ephemeral: true
+			});
+		}
+        
+		if (interaction.user.id !== hostId) {
 			return interaction.reply({
 				content: 'Sorry, only the host can end this event.',
 				ephemeral: true
 			});
+		}
 
 		const current = getCurrentTimeMin();
 		const { embeds, components } = interaction.message;

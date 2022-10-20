@@ -1,4 +1,4 @@
-import { Category, ChannelInform, ChannelScan } from '@prisma/client';
+import { Category, ChannelInform, ChannelScan, ChannelSetting } from '@prisma/client';
 import {
 	APIEmbedField,
 	CategoryChannel,
@@ -10,7 +10,8 @@ import {
 	Message,
 	NonThreadGuildBasedChannel,
 	PermissionFlagsBits,
-	TextChannel
+	TextChannel,
+	VoiceChannel
 } from 'discord.js';
 import _ from 'lodash';
 import { sprintf } from 'sprintf-js';
@@ -26,7 +27,6 @@ import {
 import { awaitWrapSendRequestReturnValue, parentChannelInform } from '../types/Util';
 import {
 	COMMAND_CONTENT,
-	defaultChannelInform,
 	defaultPartialChannelInform,
 	ERROR_REPLY,
 	MONTH,
@@ -137,7 +137,8 @@ export function readGuildInform(guildInform: GuildInform, guildId: string): APIE
 	};
 
 	channelInform = Object.keys(guildInform.channels).reduce<ChannelInform>(
-		(pre: ChannelInform, cur: string) => {
+		(pre: ChannelInform, cur: keyof ChannelSetting) => {
+			if (cur === 'archiveCategoryChannels') return pre;
 			pre.channelName += `> **${cur.toLocaleUpperCase()} CHANNEL**\n`;
 			const channel = guildInform.channels[cur];
 
@@ -178,6 +179,18 @@ export function readGuildInform(guildInform: GuildInform, guildId: string): APIE
 		}, '');
 	}
 
+	let excludedCategoryChannelsContent = '> -';
+	const excludedCategoryChannels = guildInform.channels.archiveCategoryChannels;
+
+	if (excludedCategoryChannels.length !== 0) {
+		excludedCategoryChannelsContent = guildInform.channels.archiveCategoryChannels.reduce(
+			(pre, cur) => {
+				return pre + `> <#${cur}>\n`;
+			},
+			''
+		);
+	}
+
 	return [
 		{
 			name: 'Admin Role',
@@ -203,61 +216,79 @@ export function readGuildInform(guildInform: GuildInform, guildId: string): APIE
 			name: 'Target Channel',
 			value: channelInform.channelValue,
 			inline: true
+		},
+		{
+			name: 'Excluded Category Channel',
+			value: excludedCategoryChannelsContent,
+			inline: false
 		}
 	];
 }
 
 export function checkChannelPermission(channel: TextChannel, userId: string) {
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access.';
+		return 'Missing **VIEW CHANNEL** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access.';
+		return 'Missing **SEND MESSAGES** access';
+	}
+	return false;
+}
+
+export function checkVoiceChannelPermission(channel: VoiceChannel, userId: string) {
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
+		return 'Missing **VIEW CHANNEL** access';
+	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
+		return 'Missing **VIEW CHANNEL** access';
+	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
+		return 'Missing **SEND MESSAGES** access';
 	}
 	return false;
 }
 
 export function checkToBeArchivedChannelPermission(channel: TextChannel, userId: string) {
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access.';
+		return 'Missing **VIEW CHANNEL** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access.';
+		return 'Missing **SEND MESSAGES** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
-		return 'Missing **MANAGE CHANNELS** access.';
+		return 'Missing **MANAGE CHANNELS** access';
 	}
 	return false;
 }
 
 export function checkIntroductionChannelPermission(channel: TextChannel, userId: string) {
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access.';
+		return 'Missing **VIEW CHANNEL** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access.';
+		return 'Missing **SEND MESSAGES** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ReadMessageHistory])) {
-		return 'Missing **READ MESSAGE HISTORY** access.';
+		return 'Missing **READ MESSAGE HISTORY** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.CreatePublicThreads])) {
-		return 'Missing **CREATE PUBLIC THREADS** access.';
+		return 'Missing **CREATE PUBLIC THREADS** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessagesInThreads])) {
-		return 'Missing **SEND MESSAGES IN THREAD** access.';
+		return 'Missing **SEND MESSAGES IN THREAD** access';
 	}
 	return false;
 }
 
 export function checkTownHallChannelPermission(channel: TextChannel, userId: string) {
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.Connect])) {
-		return 'Missing **CONNECT** access.';
+		return 'Missing **CONNECT** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access.';
+		return 'Missing **VIEW CHANNEL** access';
 	}
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access.';
+		return 'Missing **SEND MESSAGES** access';
 	}
 	return false;
 }
@@ -278,12 +309,12 @@ export async function stickyMsgHandler(
 	if (typeof preChannel !== 'undefined') {
 		if (checkIntroductionChannelPermission(preChannel, botId)) return;
 		(await preChannel.messages.fetch({ limit: 25 }))
-			.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg?.deletable)
+			.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
 			.forEach((msg) => msg.delete());
 	}
 	if (checkIntroductionChannelPermission(curChannel, botId)) return;
 	(await curChannel.messages.fetch({ limit: 25 }))
-		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg?.deletable)
+		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
 		.forEach((msg) => msg.delete());
 	return curChannel.send(STICKYMSG);
 }
@@ -357,6 +388,8 @@ export async function scanChannel(
 ): Promise<GuildChannelScan> {
 	let channels = await guild.channels.fetch();
 	const scanResult: GuildChannelScan = {};
+	const guildId = guild.id;
+	const preivosScanResult = myCache.myGet('ChannelScan')[guildId];
 
 	channels = channels.filter(
 		(channel) =>
@@ -368,6 +401,32 @@ export async function scanChannel(
 	const fetchMsgPromise = [];
 
 	Array.from(channels.values()).forEach((channel: TextChannel) => {
+		const { parentId, parentName } = getParentInform(channel.parentId, channel.parent);
+		const channelId = channel.id;
+		const previousChannelInform = preivosScanResult?.[parentId]?.channels?.[channel.id];
+
+		if (parentId in scanResult) {
+			scanResult[parentId].channels[channelId] = {
+				...defaultPartialChannelInform,
+				channelName: channel.name,
+			};
+		} else {
+			scanResult[parentId] = {
+				parentName: parentName,
+				channels: {
+					[channelId]: {
+						...defaultPartialChannelInform,
+						channelName: channel.name
+					}
+				}
+			};
+		}
+
+		if (previousChannelInform?.status) {
+			scanResult[parentId].channels[channelId] = previousChannelInform;
+			return;
+		}
+
 		fetchMsgPromise.push(
 			awaitWrap(
 				channel.messages.fetch({
@@ -375,24 +434,6 @@ export async function scanChannel(
 				})
 			)
 		);
-		const { parentId, parentName } = getParentInform(channel.parentId, channel.parent);
-
-		if (parentId in scanResult) {
-			scanResult[parentId].channels[channel.id] = {
-				channelName: channel.name,
-				...defaultPartialChannelInform
-			};
-		} else {
-			scanResult[parentId] = {
-				parentName: parentName,
-				channels: {
-					[channel.id]: {
-						channelName: channel.name,
-						...defaultPartialChannelInform
-					}
-				}
-			};
-		}
 	});
 	const results: Array<awaitWrapType<Collection<string, Message>>> = await Promise.all(
 		fetchMsgPromise
@@ -413,7 +454,7 @@ export async function scanChannel(
 	return scanResult;
 }
 
-export function serializeChannelScan(scanResult: ChannelScan): ChannelScanCache {
+export function deSerializeChannelScan(scanResult: ChannelScan): ChannelScanCache {
 	const result: ChannelScanCache = {};
 
 	result[scanResult.discordId] = {};
@@ -437,13 +478,13 @@ export function serializeChannelScan(scanResult: ChannelScan): ChannelScanCache 
 	return result;
 }
 
-export function deSerializeChannelScan(scanResult: ChannelScanCache, guildId: string): ChannelScan {
+export function serializeChannelScan(scanResult: ChannelScanCache, guildId: string): ChannelScan {
 	const guildChannelScan = scanResult[guildId];
 	const categories: Array<Category> = [];
-	const channelInformArray: Array<ChannelInform> = [];
 
 	Object.keys(guildChannelScan).forEach((parentId) => {
 		const { parentName, channels } = guildChannelScan[parentId];
+		const channelInformArray: Array<ChannelInform> = [];
 
 		Object.keys(channels).forEach((channelId) => {
 			channelInformArray.push({
@@ -484,11 +525,10 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 
 				const lastTimestamp = channels[channelId].lastMsgTimestamp;
 
-				if (lastTimestamp) {
-					lastMsgTimeField = lastMsgTimeField.concat(`> <t:${lastTimestamp}:R>\n`);
-				} else {
-					// fetch failed
+				if (lastTimestamp === defaultPartialChannelInform.lastMsgTimestamp) {
 					lastMsgTimeField = lastMsgTimeField.concat('> `unfetchable`\n');
+				} else {
+					lastMsgTimeField = lastMsgTimeField.concat(`> <t:${lastTimestamp}:R>\n`);
 				}
 
 				if (channels[channelId].status) {
@@ -505,10 +545,10 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 					statusField = statusField.concat('> `unsent`\n');
 				}
 			});
-		if (counter + limit > length) break;
 		channelFields.push(channelField);
 		lastMsgTimeFields.push(lastMsgTimeField);
 		statusFields.push(statusField);
+		if (counter + limit > length) break;
 		counter += limit;
 	}
 	return {
@@ -540,7 +580,8 @@ export async function autoArchive(
 			errorMessage: `Notification channel <#${notificationChannelId}> is unfetchable.`
 		};
 	}
-	const { archiveCategoryChannels, autoArchiveInform } = guildInform;
+	const { autoArchiveInform } = guildInform;
+	const { archiveCategoryChannels } = guildInform.channels;
 
 	if (!notificationChannelId) {
 		return {
@@ -678,8 +719,11 @@ export async function autoArchive(
 			discordId: guildId
 		},
 		data: {
-			archiveCategoryChannels: toBeCachedArchiveCategoryChannel,
-			autoArchiveInform: autoArchiveInform
+			autoArchiveInform: autoArchiveInform,
+			channels: {
+				...guildInform.channels,
+				archiveCategoryChannels: toBeCachedArchiveCategoryChannel
+			}
 		}
 	});
 
@@ -687,7 +731,10 @@ export async function autoArchive(
 		...myCache.myGet('Guild'),
 		[guildId]: {
 			...myCache.myGet('Guild')[guildId],
-			archiveCategoryChannels: toBeCachedArchiveCategoryChannel,
+			channels: {
+				...guildInform.channels,
+				archiveCategoryChannels: toBeCachedArchiveCategoryChannel
+			},
 			autoArchiveInform: autoArchiveInform
 		}
 	});
@@ -705,7 +752,12 @@ export async function autoArchive(
 			discordId: guildId
 		},
 		data: {
-			categories: scanResult
+			categories: serializeChannelScan(
+				{
+					[guildId]: scanResult
+				},
+				guildId
+			).categories
 		}
 	});
 	myCache.mySet('ChannelScan', {
@@ -776,7 +828,12 @@ export async function deleteChannelHandler(
 			discordId: guildId
 		},
 		data: {
-			categories: scanResult
+			categories: serializeChannelScan(
+				{
+					[guildId]: scanResult
+				},
+				guildId
+			).categories
 		}
 	});
 	myCache.mySet('ChannelScan', {
@@ -796,7 +853,7 @@ export async function createChannelHandler(
 
 	if (parentId in scanResult) {
 		scanResult[parentId].channels[newChannel.id] = {
-			...defaultChannelInform,
+			...defaultPartialChannelInform,
 			channelName: newChannel.name
 		};
 	} else {
@@ -804,7 +861,7 @@ export async function createChannelHandler(
 			parentName: parentName,
 			channels: {
 				[newChannel.id]: {
-					...defaultChannelInform,
+					...defaultPartialChannelInform,
 					channelName: newChannel.name
 				}
 			}
@@ -815,12 +872,34 @@ export async function createChannelHandler(
 			discordId: guildId
 		},
 		data: {
-			categories: scanResult
+			categories: serializeChannelScan(
+				{
+					[guildId]: scanResult
+				},
+				guildId
+			).categories
 		}
 	});
 	myCache.mySet('ChannelScan', {
 		...myCache.myGet('ChannelScan'),
 		[guildId]: scanResult
 	});
-	return
+	return;
+}
+
+export async function checkStickyAndInit(
+	guildChannelManager: GuildChannelManager,
+	channelId: string,
+	botId: string
+) {
+	const channel = guildChannelManager.cache.get(channelId) as TextChannel;
+
+	if (channel && !checkIntroductionChannelPermission(channel, botId)) {
+		(await channel.messages.fetch({ limit: 50 }))
+			.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
+			.forEach((msg) => {
+				msg.delete();
+			});
+		channel.send(STICKYMSG);
+	}
 }

@@ -5,7 +5,12 @@ import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { GuildInform } from '../types/Cache';
-import { COMMAND_CHOICES, COMMAND_CONTENT } from '../utils/const';
+import {
+	ChannelOptionName,
+	channelOptionNameToDBPropery,
+	COMMAND_CHOICES,
+	COMMAND_CONTENT
+} from '../utils/const';
 import {
 	checkChannelPermission,
 	checkIntroductionChannelPermission,
@@ -29,49 +34,49 @@ export default new Command({
 					options: [
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'celebration',
+							name: ChannelOptionName.celebration,
 							description:
 								'Set a Celebration Channel, where members can receive brithday messages and other blessing',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'notification',
+							name: ChannelOptionName.notification,
 							description:
 								'Set a Notification Channel, where SAT members will be notified with channel changes',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'introduction',
+							name: ChannelOptionName.introduction,
 							description:
-								'Set a Introduction Channel, which members introduce themselves and get onboarding information',
+								'Set a Introduction Channel, which members introduce themselves',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'women_introduction',
+							name: ChannelOptionName.women_introduction,
 							description:
-								'Set a DevDAO Women Introcution Channel, which members introduce themselves and get onboarding information',
+								'Set a DevDAO Women Introcution Channel, which members introduce themselves',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'onboarding',
+							name: ChannelOptionName.onboarding,
 							description:
 								'Set a Onboarding Voice Channel, which we hold the onboarding calls',
 							channelTypes: [ChannelType.GuildVoice]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'onboarding_notification',
+							name: ChannelOptionName.onboarding_notification,
 							description:
-								'Set a Onboarding Notification Channel, which onboarding teams can receive the event of thread Creation',
+								'Set a Onboarding Notification Channel, which teams can receive the event of thread Creation',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: 'archive',
+							name: ChannelOptionName.archive,
 							description:
 								'Set a Archive Category Channel, which the bot will exclude it during the channel scan',
 							channelTypes: [ChannelType.GuildCategory]
@@ -221,6 +226,7 @@ export default new Command({
 					const targetChannel = option.channel as TextChannel;
 					const permissionChecking = checkChannelPermission(targetChannel, botId);
 
+                    /// todo check whether channels have topic
 					if (permissionChecking) {
 						failReplyArray.push(
 							sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
@@ -251,7 +257,9 @@ export default new Command({
 							continue;
 						}
 						const preChannelId =
-							myCache.myGet('Guild')[guildId].channels.introductionChannel;
+							myCache.myGet('Guild')[guildId].channels[
+								channelOptionNameToDBPropery[channelOptionName]
+							] as string;
 
 						if (preChannelId && preChannelId !== channelId) {
 							const preChannel = interaction.guild.channels.cache.get(
@@ -270,7 +278,9 @@ export default new Command({
 						})
 					);
 					if (channelId !== cachedGuildInform.channels[channelOptionName])
-						cachedGuildInform.channels[channelOptionName] = channelId;
+						cachedGuildInform.channels[
+							channelOptionNameToDBPropery[channelOptionName]
+						] = channelId;
 				}
 				if (successReplyArray.length !== 0) {
 					await prisma.guilds.update({
@@ -336,8 +346,14 @@ export default new Command({
 			}
 
 			if (subCommandName === 'admin_member') {
-				const { id: userId, username } = args.getUser('member');
+				const { id: userId, username, bot } = args.getUser('member');
 
+				if (bot) {
+					return interaction.reply({
+						content: 'You cannot add a bot as an admin member.',
+						ephemeral: true
+					});
+				}
 				if (adminMember.includes(userId)) {
 					return interaction.reply({
 						content: `\`${username}\` has been set an admin member.`,
@@ -473,7 +489,7 @@ export default new Command({
 				const filteredAdminCommandName = adminCommand.filter(
 					(value) => value !== removeCommand
 				);
-                
+
 				if (filteredAdminCommandName.length === adminCommand.length)
 					return interaction.reply({
 						content: 'Command you input is invalid.',

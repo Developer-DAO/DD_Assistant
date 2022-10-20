@@ -25,7 +25,7 @@ export default new Event(
 
 		const guildId = newChannel.guild.id;
 		const guildInformCache = myCache.myGet('Guild')[guildId];
-		const { archiveCategoryChannels } = guildInformCache;
+		const { archiveCategoryChannels } = guildInformCache.channels;
 		const { notificationChannel: notificationChannelId } = guildInformCache.channels;
 		const notificationChannel = newChannel.guild.channels.cache.get(
 			notificationChannelId

@@ -1,4 +1,10 @@
-import { AutocompleteInteraction, CommandInteractionOptionResolver, Interaction } from 'discord.js';
+import {
+	AutocompleteInteraction,
+	CommandInteractionOptionResolver,
+	GuildMember,
+	Interaction
+} from 'discord.js';
+import _ from 'lodash';
 import { sprintf } from 'sprintf-js';
 
 import { client } from '..';
@@ -37,6 +43,21 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 			});
 		}
 
+		const member = interaction.member as GuildMember;
+		const guildInformCache = myCache.myGet('Guild')[interaction.guild.id];
+		const { adminCommand, adminMember, adminRole } = guildInformCache;
+
+		if (adminCommand.includes(interaction.commandName)) {
+			if (
+				!adminMember.includes(member.id) &&
+				_.intersection(Array.from(member.roles.cache.keys()), adminRole).length === 0
+			)
+				return interaction.reply({
+					content: "Sorry, you don't have permission to run this command.",
+					ephemeral: true
+				});
+		}
+
 		try {
 			await command.execute({
 				client: client,
@@ -72,10 +93,12 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		const button = client.buttons.get(interaction.customId);
 
 		if (!button) {
-			return interaction.reply({
-				content: 'You have clicked a non exitent button',
-				ephemeral: true
-			});
+            // todo how to tell if the button is from collector or it's from a registered button
+			// return interaction.reply({
+			// 	content: 'You have clicked a non exitent button',
+			// 	ephemeral: true
+			// });
+            return
 		}
 
 		try {

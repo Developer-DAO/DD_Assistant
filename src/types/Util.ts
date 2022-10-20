@@ -6,6 +6,6 @@ export interface parentChannelInform {
 export interface awaitWrapSendRequestReturnValue {
 	error: boolean;
 	channelId: string;
-	createTimestamp?: string;
+	createdTimestamp?: string;
 	messageId?: string;
 }

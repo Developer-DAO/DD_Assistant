@@ -7,12 +7,14 @@ import {
 	ChannelType,
 	ComponentType,
 	EmbedBuilder,
+	Interaction,
 	TextChannel
 } from 'discord.js';
 
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { ChannelScanCache } from '../types/Cache';
 import { awaitWrapSendRequestReturnValue } from '../types/Util';
 import { NUMBER } from '../utils/const';
 import {
@@ -20,10 +22,10 @@ import {
 	awaitWrap,
 	awaitWrapSendRequest,
 	checkChannelPermission,
-	deSerializeChannelScan,
 	embedFieldsFactory,
 	getNotificationMsg,
-	scanChannel
+	scanChannel,
+	serializeChannelScan
 } from '../utils/util';
 
 export default new Command({
@@ -74,6 +76,16 @@ export default new Command({
 		},
 		{
 			type: ApplicationCommandOptionType.Subcommand,
+			name: 'auto_archive_on',
+			description: 'Initiate channel scan'
+		},
+		{
+			type: ApplicationCommandOptionType.Subcommand,
+			name: 'auto_archive_off',
+			description: 'Initiate channel scan'
+		},
+		{
+			type: ApplicationCommandOptionType.Subcommand,
 			name: 'delete',
 			description: 'Delete channels under a category channel',
 			options: [
@@ -110,15 +122,16 @@ export default new Command({
 					scanStatus: true
 				}
 			});
-			// todo keep previous context
 			await interaction.reply({
 				content:
 					'It may take 1-2 mins to complete the scan. Please come back and check later.',
 				ephemeral: true
 			});
 
-			const archiveChannels = myCache.myGet('Guild')[guildId].archiveCategoryChannels;
+			const archiveChannels =
+				myCache.myGet('Guild')[guildId].channels.archiveCategoryChannels;
 			const scanResult = await scanChannel(interaction.guild, archiveChannels);
+
 			const channelScanCache = {
 				[guildId]: scanResult
 			};
@@ -128,7 +141,7 @@ export default new Command({
 					discordId: guildId
 				},
 				data: {
-					categories: deSerializeChannelScan(channelScanCache, guildId).categories
+					categories: serializeChannelScan(channelScanCache, guildId).categories
 				}
 			});
 			myCache.mySet('ChannelScan', channelScanCache);
@@ -146,9 +159,17 @@ export default new Command({
 
 		if (subcommandName === 'view') {
 			const categoryChannelId = args.getString('category');
+			const scanResult = myCache.myGet('ChannelScan')[guildId];
+
+			if (Object.keys(scanResult).length === 0) {
+				return interaction.reply({
+					content: `Please init the scan first through </scan init:${commandId}>`,
+					ephemeral: true
+				});
+			}
 
 			if (categoryChannelId) {
-				const result = myCache.myGet('ChannelScan')[guildId][categoryChannelId];
+				const result = scanResult[categoryChannelId];
 
 				if (!result)
 					return interaction.reply({
@@ -173,12 +194,12 @@ export default new Command({
 								},
 								{ name: '⚙️ Status', value: statusFields[index], inline: true }
 							])
-					)
+					),
+					ephemeral: true
 				});
 			}
 
 			await interaction.deferReply({ ephemeral: true });
-			const scanResult = myCache.myGet('ChannelScan')[guildId];
 
 			if (!scanResult && Object.keys(scanResult).length === 0) {
 				return interaction.followUp({
@@ -186,7 +207,7 @@ export default new Command({
 				});
 			}
 
-			let embedContentArray: EmbedBuilder[][];
+			let embedContentArray: EmbedBuilder[] = [];
 			let pageIndex = 1;
 
 			Object.keys(scanResult).forEach((parentId) => {
@@ -199,7 +220,7 @@ export default new Command({
 
 				embedContentArray = [
 					...embedContentArray,
-					...channelFields.map((value, index) => [
+					...channelFields.map((value, index) =>
 						new EmbedBuilder()
 							.setTitle(embedTitle)
 							.addFields([
@@ -212,7 +233,7 @@ export default new Command({
 								{ name: '⚙️ Status', value: statusFields[index], inline: true }
 							])
 							.setFooter({ text: `Group ${pageIndex++}` })
-					])
+					)
 				];
 			});
 
@@ -242,19 +263,22 @@ export default new Command({
 							.setStyle(ButtonStyle.Primary)
 							.setDisabled(index === embedContentArray.length - 1),
 						new ButtonBuilder()
-							.setLabel(`Expired in ${NUMBER.SCAN_VIEW_DURATION / 60000}`)
-							.setStyle(ButtonStyle.Link)
+							.setCustomId('expire')
+							.setLabel(`Expired in ${NUMBER.SCAN_VIEW_DURATION / 60000} mins`)
+							.setStyle(ButtonStyle.Secondary)
 							.setDisabled(true)
 					])
 				];
 			};
 			let page = 0;
 			const msg = await interaction.followUp({
-				embeds: embedContentArray[page],
+				embeds: [embedContentArray[page]],
 				components: buttonGenerator(page)
 			});
+			const filter = (i: Interaction) => true;
 
 			const collector = msg.createMessageComponentCollector({
+				filter,
 				time: NUMBER.SCAN_VIEW_DURATION,
 				componentType: ComponentType.Button
 			});
@@ -275,11 +299,10 @@ export default new Command({
 				}
 
 				await interaction.editReply({
-					embeds: embedContentArray[page],
+					embeds: [embedContentArray[page]],
 					components: buttonGenerator(page)
 				});
 				btnInteraction.deferUpdate();
-				return;
 			});
 
 			collector.on('end', async (collected) => {
@@ -371,6 +394,63 @@ export default new Command({
 			}
 		}
 
+		if (subcommandName === 'auto_archive_on') {
+			await interaction.deferReply({ ephemeral: true });
+			await prisma.guilds.update({
+				where: {
+					discordId: guildId
+				},
+				data: {
+					switch: {
+						autoArchiveSwitch: true
+					}
+				}
+			});
+			myCache.mySet('Guild', {
+				...myCache.myGet('Guild'),
+				[guildId]: {
+					...myCache.myGet('Guild')[guildId],
+					switch: {
+						autoArchiveSwitch: true
+					}
+				}
+			});
+
+			return interaction.followUp({
+				content: `Auto Archive is enabled, current frequency is ${
+					NUMBER.AUTO_ARCHIVE_INTERVL / 60000
+				} mins. Disable it through </scan auto_archive_off:${commandId}>`,
+				ephemeral: true
+			});
+		}
+		if (subcommandName === 'auto_archive_off') {
+			await interaction.deferReply({ ephemeral: true });
+			await prisma.guilds.update({
+				where: {
+					discordId: guildId
+				},
+				data: {
+					switch: {
+						autoArchiveSwitch: false
+					}
+				}
+			});
+			myCache.mySet('Guild', {
+				...myCache.myGet('Guild'),
+				[guildId]: {
+					...myCache.myGet('Guild')[guildId],
+					switch: {
+						autoArchiveSwitch: false
+					}
+				}
+			});
+
+			return interaction.followUp({
+				content: `Auto Archive is disabled, Enable it through </scan auto_archive_on:${commandId}>`,
+				ephemeral: true
+			});
+		}
+
 		if (subcommandName === 'broadcast') {
 			if (broadcastStatus) {
 				return interaction.reply({
@@ -391,6 +471,12 @@ export default new Command({
 			const unfetchableChannelNameArray: Array<string> = [];
 			const failSendMsgChannelIdArray: Array<string> = [];
 			const scanResult = myCache.myGet('ChannelScan')[guildId];
+
+			if (Object.keys(scanResult).length === 0) {
+				return interaction.followUp({
+					content: `Please init the scan first through </scan init:${commandId}>`
+				});
+			}
 			const broadcastResult: {
 				[channelId: string]: {
 					messageId: string;
@@ -402,14 +488,12 @@ export default new Command({
 				const channels = scanResult[parentId];
 
 				for (const channelId of Object.keys(channels.channels)) {
+					if (channels.channels[channelId].status) continue;
+
 					const channel = interaction.guild.channels.cache.get(channelId) as TextChannel;
 
-					broadcastResult[channelId] = {
-						messageId: '',
-						timestamp: ''
-					};
 					if (!channel) {
-						unfetchableChannelNameArray.push(channels[channelId].channelName);
+						unfetchableChannelNameArray.push(channels.channels[channelId].channelName);
 					} else {
 						const permissionCheckingResult = checkChannelPermission(channel, botId);
 
@@ -451,45 +535,61 @@ export default new Command({
 			result.forEach((value) => {
 				if (value.error) {
 					failSendMsgChannelIdArray.push(value.channelId);
-				} else
+				} else {
 					broadcastResult[value.channelId] = {
 						messageId: value.messageId,
-						timestamp: value.createTimestamp
+						timestamp: value.createdTimestamp
 					};
+				}
 			});
 
-			const failSendMsgChannelContent =
-				failSendMsgChannelIdArray.reduce((pre, cur) => {
+			let failSendMsgChannelContent = '> -';
+
+			if (failSendMsgChannelIdArray.length !== 0) {
+				failSendMsgChannelContent = failSendMsgChannelIdArray.reduce((pre, cur) => {
 					return pre + `> <#${cur}>\n`;
-				}, '') ?? '> -';
-			const unfetchableChannelNameContent =
-				unfetchableChannelNameArray.reduce((pre, cur) => {
-					return pre + `> \`${cur}\`\n`;
-				}, '') ?? '> -';
+				}, '');
+			}
+
+			let unfetchableChannelNameContent = '> -';
+
+			if (unfetchableChannelNameArray.length !== 0) {
+				unfetchableChannelNameContent = unfetchableChannelNameArray.reduce((pre, cur) => {
+					return pre + `> <#${cur}>\n`;
+				}, '');
+			}
 
 			Object.keys(scanResult).forEach((parentId) => {
 				const channels = scanResult[parentId].channels;
 
 				Object.keys(channels).forEach((channelId) => {
-					const { messageId, timestamp } = broadcastResult[channelId];
+					if (broadcastResult[channelId]) {
+						const { messageId, timestamp } = broadcastResult[channelId];
 
-					if (messageId) {
-						scanResult[parentId].channels[channelId] = {
-							channelName: scanResult[parentId].channels[channelId].channelName,
-							status: true,
-							messageId: messageId,
-							archiveTimestamp: timestamp + NUMBER.ARCHIVE_EXPIRY_TIME,
-							lastMsgTimestamp: timestamp
-						};
+						if (messageId) {
+							scanResult[parentId].channels[channelId] = {
+								channelName: scanResult[parentId].channels[channelId].channelName,
+								status: true,
+								messageId: messageId,
+								archiveTimestamp: (
+									Number(timestamp) + NUMBER.ARCHIVE_EXPIRY_TIME
+								).toString(),
+								lastMsgTimestamp: timestamp
+							};
+						}
 					}
 				});
 			});
-			prisma.channelScan.update({
+			const channelScanCache: ChannelScanCache = {
+				[guildId]: scanResult
+			};
+
+			await prisma.channelScan.update({
 				where: {
 					discordId: guildId
 				},
 				data: {
-					categories: scanResult
+					categories: serializeChannelScan(channelScanCache, guildId).categories
 				}
 			});
 			myCache.mySet('ChannelScan', {
@@ -503,7 +603,6 @@ export default new Command({
 					broadcastStatus: false
 				}
 			});
-
 			return interaction.followUp({
 				embeds: [
 					new EmbedBuilder()
@@ -524,7 +623,7 @@ export default new Command({
 							}
 						])
 				],
-				content: `Broadcast is done, please run </scan view: ${commandId}> again to view results`
+				content: `Broadcast is done, please run </scan view:${commandId}> again to view results`
 			});
 		}
 	}

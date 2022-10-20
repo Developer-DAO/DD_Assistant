@@ -1,14 +1,15 @@
 import { Auto } from '../structures/AutoComplete';
-import { DOCS } from '../utils/const';
+import { myCache } from '../structures/Cache';
 
 export default new Auto({
-	correspondingCommandName: 'devdao',
+	correspondingCommandName: 'scan',
 	execute: ({ interaction }) => {
 		const { value: inputValue } = interaction.options.getFocused(true);
+		const scanResult = myCache.myGet('ChannelScan')[interaction.guild.id];
 
-		const res = Object.keys(DOCS).map((key) => ({
-			name: DOCS[key]['index'],
-			value: key
+		const res = Object.keys(scanResult).map((parentId) => ({
+			name: scanResult[parentId].parentName,
+			value: parentId
 		}));
 
 		if (inputValue === '') return interaction.respond(res);

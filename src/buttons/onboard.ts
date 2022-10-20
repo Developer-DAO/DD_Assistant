@@ -1,6 +1,6 @@
-import { ButtonBuilder } from '@discordjs/builders';
 import {
 	ActionRowBuilder,
+	ButtonBuilder,
 	ButtonStyle,
 	EmbedBuilder,
 	MessageType,
@@ -11,7 +11,7 @@ import { sprintf } from 'sprintf-js';
 
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
-import { COMMAND_CONTENT, EMOJI } from '../utils/const';
+import { COMMAND_CONTENT } from '../utils/const';
 import { fetchOnboardingSchedule } from '../utils/util';
 
 export default new Button({
@@ -32,12 +32,12 @@ export default new Button({
 							new ButtonBuilder()
 								.setCustomId('talk_yes')
 								.setLabel('Yes')
-								.setEmoji({ id: EMOJI.CHECK_MARK })
-								.setStyle(ButtonStyle.Primary),
+								.setStyle(ButtonStyle.Primary)
+								.setEmoji('✅'),
 							new ButtonBuilder()
 								.setCustomId('talk_no')
 								.setLabel('No')
-								.setEmoji({ id: EMOJI.WRONG })
+								.setEmoji('❌')
 								.setStyle(ButtonStyle.Secondary)
 						])
 					],
@@ -57,9 +57,9 @@ export default new Button({
 				const currentChannel = interaction.channel as TextChannel;
 				const welcomeThreadName = sprintf(
 					COMMAND_CONTENT.WELCOME_THREAD_NAME,
-					interaction.user.id
+					interaction.member.displayName
 				);
-                
+
 				if (messages.size === 0) {
 					welcomeThread = await currentChannel.threads.create({
 						name: welcomeThreadName
@@ -89,8 +89,11 @@ export default new Button({
 				) as TextChannel;
 
 				if (currentChannel.id === introductionChannel) {
+                    // todo make command id flexible
 					welcomeThread.send({
-						content: COMMAND_CONTENT.THREAD_WELCOME_MSG
+						content: sprintf(COMMAND_CONTENT.THREAD_WELCOME_MSG, {
+							newComerId: interaction.user.id
+						})
 					});
 				} else {
 					welcomeThread.send({
