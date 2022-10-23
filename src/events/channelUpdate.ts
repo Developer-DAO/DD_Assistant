@@ -52,8 +52,8 @@ export default new Event(
 				embeds: [
 					new EmbedBuilder().setTitle('Channal Report').addFields([
 						{ name: 'Parent', value: `${parentName} (${parentId})` },
-						{ name: 'Channel', value: `\`${oldChannel.name}\`` },
-						{ name: 'Action', value: 'Delete' }
+						{ name: 'Channel', value: `<#${oldChannel.id}>` },
+						{ name: 'Action', value: 'Add Topic' }
 					])
 				]
 			});
@@ -78,7 +78,7 @@ export default new Event(
 					new EmbedBuilder().setTitle('Channal Report').addFields([
 						{ name: 'Parent', value: `${parentName} (${parentId})` },
 						{ name: 'Channel', value: `<#${newChannel.id}>` },
-						{ name: 'Action', value: 'Creation' }
+						{ name: 'Action', value: 'Remove Topic' }
 					])
 				],
 				components: [

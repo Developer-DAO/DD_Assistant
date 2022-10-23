@@ -224,9 +224,20 @@ export default new Command({
 				for (const option of channelOptions) {
 					const { name: channelOptionName, value: channelId } = option;
 					const targetChannel = option.channel as TextChannel;
+
+					if (!targetChannel.topic) {
+						failReplyArray.push(
+							sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
+								setChannelName: channelOptionName,
+								targetChannelId: channelId,
+								reason: 'this channel does not have a topic'
+							})
+						);
+						continue;
+					}
 					const permissionChecking = checkChannelPermission(targetChannel, botId);
 
-                    /// todo check whether channels have topic
+					/// todo check whether channels have topic
 					if (permissionChecking) {
 						failReplyArray.push(
 							sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
@@ -256,10 +267,9 @@ export default new Command({
 							);
 							continue;
 						}
-						const preChannelId =
-							myCache.myGet('Guild')[guildId].channels[
-								channelOptionNameToDBPropery[channelOptionName]
-							] as string;
+						const preChannelId = myCache.myGet('Guild')[guildId].channels[
+							channelOptionNameToDBPropery[channelOptionName]
+						] as string;
 
 						if (preChannelId && preChannelId !== channelId) {
 							const preChannel = interaction.guild.channels.cache.get(

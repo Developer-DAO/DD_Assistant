@@ -13,7 +13,7 @@ interface ButtonRunOptions {
 }
 
 type RunFunction = (options: ButtonRunOptions) => any;
-type buttonCustomId = 'end' | 'schedule' | 'talk' | 'instruction' | 'talk_yes' | 'talk_no';
+type buttonCustomId = 'end' | 'schedule' | 'talk' | 'instruction' | 'talk_yes' | 'talk_no' | 'send' | 'delete';
 export interface ButtonType {
 	customIds: Array<buttonCustomId>;
 	execute: RunFunction;

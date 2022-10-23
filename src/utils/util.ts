@@ -424,7 +424,6 @@ export async function scanChannel(
 
 		if (previousChannelInform?.status) {
 			scanResult[parentId].channels[channelId] = previousChannelInform;
-			return;
 		}
 
 		fetchMsgPromise.push(
