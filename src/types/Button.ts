@@ -1,8 +1,9 @@
+/* eslint-disable no-unused-vars */
 import { ButtonInteraction, GuildMember, Message } from 'discord.js';
 
 import { MyClient } from '../structures/Client';
 
-export default interface ExtendedButtonInteraction extends ButtonInteraction {
+export interface ExtendedButtonInteraction extends ButtonInteraction {
 	member: GuildMember;
 	message: Message;
 }
@@ -13,8 +14,22 @@ interface ButtonRunOptions {
 }
 
 type RunFunction = (options: ButtonRunOptions) => any;
-type buttonCustomId = 'end' | 'schedule' | 'talk' | 'instruction' | 'talk_yes' | 'talk_no' | 'send' | 'delete';
+type ButtonCustomId =
+	| 'end'
+	| 'schedule'
+	| 'talk'
+	| 'instruction'
+	| 'talk_yes'
+	| 'talk_no'
+	| 'send'
+	| 'delete';
+export enum ButtonCollectorCustomId {
+	Next = 'next',
+	Previous = 'previous',
+	First = 'first',
+	Last = 'last',
+}
 export interface ButtonType {
-	customIds: Array<buttonCustomId>;
+	customIds: Array<ButtonCustomId>;
 	execute: RunFunction;
 }

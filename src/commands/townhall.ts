@@ -1,6 +1,7 @@
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionType,
+	ApplicationCommandType,
 	ButtonBuilder,
 	ButtonStyle,
 	ChannelType,
@@ -18,6 +19,7 @@ import { checkVoiceChannelPermission, getCurrentTimeMin } from '../utils/util';
 export default new Command({
 	name: 'townhall',
 	description: 'Help to record town hall',
+	type: ApplicationCommandType.ChatInput,
 	options: [
 		{
 			name: 'channel',

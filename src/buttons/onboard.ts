@@ -17,12 +17,17 @@ import { fetchOnboardingSchedule } from '../utils/util';
 export default new Button({
 	customIds: ['schedule', 'talk', 'talk_yes', 'talk_no'],
 	execute: async ({ interaction }) => {
+		const { guildId } = interaction;
+
 		switch (interaction.customId) {
-			case 'schedule':
+			case 'schedule': {
+				const onboardingEmbeds = await fetchOnboardingSchedule(guildId);
+
 				return interaction.reply({
-					embeds: [fetchOnboardingSchedule(interaction.guild.id)],
+					embeds: [onboardingEmbeds],
 					ephemeral: true
 				});
+			}
 			case 'talk': {
 				return interaction.reply({
 					content:
@@ -83,21 +88,29 @@ export default new Button({
 					}
 				}
 				const { introductionChannel, onboardNotificationChannel } =
-					myCache.myGet('Guild')[interaction.guild.id].channels;
+					myCache.myGet('Guild')[guildId].channels;
 				const onboardNotifyChannel = interaction.guild.channels.cache.get(
 					onboardNotificationChannel
 				) as TextChannel;
+				const onboardEmbeds = await fetchOnboardingSchedule(guildId);
 
 				if (currentChannel.id === introductionChannel) {
-                    // todo make command id flexible
+					const devdaoCommand = interaction.guild.commands.cache.find(
+						(command) => command.name === 'devdao'
+					);
+					const devdaoCommandId = devdaoCommand?.id ?? '0';
+
 					welcomeThread.send({
 						content: sprintf(COMMAND_CONTENT.THREAD_WELCOME_MSG, {
-							newComerId: interaction.user.id
-						})
+							newComerId: interaction.user.id,
+							devdaoCommandId: devdaoCommandId
+						}),
+						embeds: [onboardEmbeds]
 					});
 				} else {
 					welcomeThread.send({
-						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG
+						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG,
+						embeds: [onboardEmbeds]
 					});
 				}
 
@@ -122,7 +135,8 @@ export default new Button({
 			}
 			case 'talk_no':
 				return interaction.reply({
-					content: 'Welcome to Developer DAO! See you in the DAO!'
+					content: 'Welcome to Developer DAO! See you in the DAO!',
+					ephemeral: true
 				});
 		}
 	}

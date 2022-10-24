@@ -8,6 +8,7 @@ import {
 	MessageReplyOptions
 } from 'discord.js';
 
+import { ButtonCollectorCustomId } from '../types/Button';
 import {
 	CacheType,
 	GuildChannelScan,
@@ -66,13 +67,13 @@ type ResType = {
 export const NUMBER: Numerical = {
 	AWAIT_TIMEOUT: 15 * 1000,
 	AUTOCOMPLETE_OPTION_LENGTH: 25,
-	ONBOARDING_DURATION: 60,
+	ONBOARDING_DURATION: 1 * 60,
 	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000,
 	EMBED_CONTENT_LIMIT: 7,
 	SCAN_VIEW_DURATION: 5 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
 	ARCHIVE_EXPIRY_TIME: 72 * 3600,
-	AUTO_ARCHIVE_INTERVL: 30 * 60 * 1000
+	AUTO_ARCHIVE_INTERVL: 0.2 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -88,6 +89,13 @@ export const ERROR_REPLY: InternalError = {
 
 export const LINK = {
 	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s'
+};
+
+export const ButtonCollectorCustomIdRecord: Readonly<Record<ButtonCollectorCustomId, string>> = {
+	first: '',
+	last: '',
+	previous: '',
+	next: ''
 };
 
 export const defaultGuildInform: GuildInform = {
@@ -176,15 +184,15 @@ export const COMMAND_CONTENT: CommandContent = {
 	INTRODUCTION:
 		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or chat with a D_D community manager 🤝',
 	ONBOARDING:
-		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n',
+		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n\n',
 	ONBOARDING_GOINGON:
-		'%(index)d. Group onboarding Call is currently live in %(channelInform)s 🔥🔥🔥 Started (<t:%(timestamp)s:R>)\n',
+		'%(index)d. Group onboarding call is currently live in %(channelInform)s 🔥🔥🔥 started (<t:%(timestamp)s:R>)\n\n',
 	ONBOARDING_END:
-		'Onboarding calls for this week have ended. We will update the latest ones this Sunday or next Monday.',
+		'Onboarding calls for this week have ended. We will update the latest ones soon.',
 	ONBOARDING_OPTION: '%(index)d. %(timestamp)s.',
 	WELCOME_THREAD_NAME: 'Welcome %s',
 	THREAD_WELCOME_MSG:
-		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:1016532004185063464> and choose a query.',
+		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:%(devdaoCommandId)s> and choose a query.',
 	WOMEN_THREAD_WELCOME_MSG:
 		"Welcome to DevDAO Women :sparkles:\n\nDevDAO women is a Social Space for Women/Nonbinary/Ally folks within Developer DAO. :seedling:\n\nFirst say say gm on :rainbow:-gm to share the blissful energy:magic_wand:\n\nDid you pick your role yet?\n\nGo to <#960706880420859904> to pick your role.\n\nIf you identify as **Women/Nonbinary** then go for :purple_heart:\nIf **you don't identify as either of them/don't want to talk about your identity** then go for :orange_heart:\n\nIf you have any ideas/topic you wanna discuss, any questions you wanna ask or just want to send some cat pictures, them <#957712595056459938> is the place for you. :wave:\n\nDon't forget to check out <#999890882251722762> if you are looking for opportunities/looking to hire someone. :rainbow:\n\nOur team call happens in Every Friday 5.00 pm UTC. :rainbow:",
 	CHANNEL_WITHOUT_PARENT_PARENTID: '0',
@@ -217,7 +225,6 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 		])
 	]
 };
-
 
 export const COMMAND_CHOICES: Array<ExtendedApplicationCommandOptionChoiceData> = [
 	{

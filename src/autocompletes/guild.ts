@@ -1,6 +1,7 @@
 import { Auto } from '../structures/AutoComplete';
 import { myCache } from '../structures/Cache';
 import { GuildInform } from '../types/Cache';
+import { NUMBER } from '../utils/const';
 
 export default new Auto({
 	correspondingCommandName: 'guild',
@@ -49,6 +50,6 @@ export default new Auto({
 			}
 		}
 		if (filter.length === 0) return interaction.respond([]);
-		else return interaction.respond(filter);
+		else return interaction.respond(filter.slice(0, NUMBER.AUTOCOMPLETE_OPTION_LENGTH));
 	}
 });

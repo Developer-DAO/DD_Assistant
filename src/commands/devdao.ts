@@ -1,6 +1,7 @@
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionType,
+	ApplicationCommandType,
 	ButtonBuilder,
 	ButtonStyle,
 	EmbedBuilder,
@@ -15,6 +16,7 @@ import { checkChannelPermission } from '../utils/util';
 export default new Command({
 	name: 'devdao',
 	description: 'Developer DAO Assistant',
+	type: ApplicationCommandType.ChatInput,
 	options: [
 		{
 			type: ApplicationCommandOptionType.String,

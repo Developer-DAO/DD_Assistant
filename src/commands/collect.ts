@@ -1,10 +1,11 @@
-import { ApplicationCommandOptionType, Role } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, Role } from 'discord.js';
 
 import { Command } from '../structures/Command';
 
 export default new Command({
 	name: 'collect',
 	description: 'Collect DAO internal data',
+    type: ApplicationCommandType.ChatInput,
 	options: [
 		{
 			name: 'role',

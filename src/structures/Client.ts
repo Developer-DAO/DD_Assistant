@@ -17,7 +17,7 @@ import { ButtonType } from '../types/Button';
 import { StatusLockCache, VoiceContextCache } from '../types/Cache';
 import { CommandType } from '../types/Command';
 import { RegisterCommandsOptions } from '../types/CommandRegister';
-import { ContextMenuType } from '../types/ContextMenu';
+import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMenu';
 import { ModalType } from '../types/Modal';
 import {
 	defaultChannelScanResult,
@@ -34,11 +34,13 @@ import { Event } from './Event';
 const globPromise = promisify(glob);
 
 export class MyClient extends Client {
-	public commands: Collection<string, CommandType> = new Collection();
+	public commands: Collection<
+		string,
+		CommandType | MessageContextMenuType | UserContextMenuType
+	> = new Collection();
 	public buttons: Collection<string, ButtonType> = new Collection();
 	public modals: Collection<string, ModalType> = new Collection();
 	public autos: Collection<string, AutoType> = new Collection();
-	public menus: Collection<string, ContextMenuType> = new Collection();
 
 	private table: any;
 
@@ -131,9 +133,11 @@ export class MyClient extends Client {
 		const menuFiles = await globPromise(`${__dirname}/../contextmenus/*{.ts,.js}`);
 
 		menuFiles.forEach(async (filePath) => {
-			const menu: ContextMenuType = await this._importFiles(filePath);
+			const menu: MessageContextMenuType | UserContextMenuType = await this._importFiles(
+				filePath
+			);
 
-			this.menus.set(menu.name, menu);
+			this.commands.set(menu.name, menu);
 			slashCommands.push(menu);
 		});
 
@@ -237,6 +241,7 @@ export class MyClient extends Client {
 		for (const [guildId, guild] of client.guilds.cache) {
 			const { autoArchiveSwitch } = guildsInform[guildId].switch;
 
+			console.log(guild.name, autoArchiveSwitch);
 			if (autoArchiveSwitch) {
 				await autoArchive(guild.channels, guildId, guild.members.me.id);
 			}

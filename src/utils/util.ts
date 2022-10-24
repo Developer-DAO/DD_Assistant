@@ -1,4 +1,10 @@
-import { Category, ChannelInform, ChannelScan, ChannelSetting } from '@prisma/client';
+import {
+	Category,
+	ChannelInform,
+	ChannelScan,
+	ChannelSetting,
+	OnboardInform
+} from '@prisma/client';
 import {
 	APIEmbedField,
 	CategoryChannel,
@@ -319,8 +325,8 @@ export async function stickyMsgHandler(
 	return curChannel.send(STICKYMSG);
 }
 
-export function fetchOnboardingSchedule(guildId: string) {
-	let description: string;
+export async function fetchOnboardingSchedule(guildId: string) {
+	let description = '';
 	const guildInform = myCache.myGet('Guild')[guildId];
 
 	if (guildInform.onboardSchedule.length === 0) {
@@ -330,32 +336,124 @@ export function fetchOnboardingSchedule(guildId: string) {
 			? ` in <#${guildInform.channels.onboardChannel}>`
 			: '';
 		const time = Math.floor(new Date().getTime() / 1000);
+		const toBeUpdatedSchedule = [...guildInform.onboardSchedule];
 
-		description = guildInform.onboardSchedule
+		guildInform.onboardSchedule
 			.sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
-			.map((onboardInform, index) => {
+			.forEach((onboardInform, index) => {
 				const timestamp = Number(onboardInform.timestamp);
+				const endTimestamp = timestamp + NUMBER.ONBOARDING_DURATION;
+
+				if (time > endTimestamp) {
+					toBeUpdatedSchedule.splice(index, 1);
+					return;
+				}
 
 				if (time > timestamp && time < timestamp + NUMBER.ONBOARDING_DURATION) {
-					return sprintf(COMMAND_CONTENT.ONBOARDING_GOINGON, {
+					description += sprintf(COMMAND_CONTENT.ONBOARDING_GOINGON, {
 						...onboardInform,
 						index: index + 1,
 						channelInform: onboardChannelContent
 					});
+					return;
 				}
-				return sprintf(COMMAND_CONTENT.ONBOARDING, {
+				description += sprintf(COMMAND_CONTENT.ONBOARDING, {
 					...onboardInform,
 					index: index + 1
 				});
-			})
-			.toString()
-			.replace(/,/g, '');
-	}
+			});
 
+		if (toBeUpdatedSchedule.length !== guildInform.onboardSchedule.length) {
+			await prisma.guilds.update({
+				where: {
+					discordId: guildId
+				},
+				data: {
+					onboardSchedule: toBeUpdatedSchedule
+				}
+			});
+			guildInform.onboardSchedule = [...toBeUpdatedSchedule];
+			myCache.mySet('Guild', {
+				...myCache.myGet('Guild'),
+				[guildId]: guildInform
+			});
+		}
+	}
+	// prevent all events are expired, causing description is empty string
+	if (guildInform.onboardSchedule.length === 0) {
+		description = COMMAND_CONTENT.ONBOARDING_END;
+	}
 	return new EmbedBuilder().setTitle('Onboarding Schedule').setDescription(description);
 }
 
-export function convertTimeStamp(timestampInSec) {
+export async function searchEvent(
+	embedFields: Array<APIEmbedField>,
+	guildId: string
+): Promise<string | false> {
+	const currentTimeStamp = Math.floor(new Date().getTime() / 1000);
+	const onboardInformArray: Array<OnboardInform> = [];
+	const guildInform = myCache.myGet('Guild')[guildId];
+	const currentOnboardSchduleTimestampArray = guildInform.onboardSchedule.map(
+		(schedule) => schedule.timestamp
+	);
+
+	embedFields.forEach((field) => {
+		const { value } = field;
+		const eventIndex: Array<number> = [];
+
+		value.match(/\[.+\]/g)?.filter((name, index) => {
+			const eventName = name.slice(1, -1).trim();
+
+			if (eventName === COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME) {
+				eventIndex.push(index);
+				return true;
+			} else return false;
+		});
+		if (eventIndex.length === 0) return;
+		const matchEventTimeStamps = value.match(/<t:\d+:R>/g);
+		const matchEventLinks = value.match(/(https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+)/g);
+
+		eventIndex.forEach((index) => {
+			const timestamp = matchEventTimeStamps[index].slice(3, -3);
+
+			if (currentOnboardSchduleTimestampArray.includes(timestamp)) return;
+			if (currentTimeStamp > Number(timestamp)) return;
+			onboardInformArray.push({
+				timestamp: timestamp,
+				eventLink: matchEventLinks[index]
+			});
+		});
+	});
+	if (onboardInformArray.length === 0) {
+		return `I cannot find \`${COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME}\` event or they are outdated.`;
+	}
+
+	try {
+		await prisma.guilds.update({
+			where: {
+				discordId: guildId
+			},
+			data: {
+				onboardSchedule: onboardInformArray
+			}
+		});
+	} catch (error) {
+		return 'Error occured when updating the database, please try again.';
+	}
+	const guildInformCache = myCache.myGet('Guild')[guildId];
+
+	myCache.mySet('Guild', {
+		...myCache.myGet('Guild'),
+		[guildId]: {
+			...guildInformCache,
+			onboardSchedule: onboardInformArray
+		}
+	});
+
+	return false;
+}
+
+export function convertTimeStamp(timestampInSec: number) {
 	const timestampInMiliSec = timestampInSec * 1000;
 	const date = new Date(timestampInMiliSec);
 
@@ -408,7 +506,7 @@ export async function scanChannel(
 		if (parentId in scanResult) {
 			scanResult[parentId].channels[channelId] = {
 				...defaultPartialChannelInform,
-				channelName: channel.name,
+				channelName: channel.name
 			};
 		} else {
 			scanResult[parentId] = {
@@ -544,10 +642,11 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 					statusField = statusField.concat('> `unsent`\n');
 				}
 			});
+
 		channelFields.push(channelField);
 		lastMsgTimeFields.push(lastMsgTimeField);
 		statusFields.push(statusField);
-		if (counter + limit > length) break;
+		if (counter + limit >= length) break;
 		counter += limit;
 	}
 	return {

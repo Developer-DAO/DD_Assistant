@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ChannelType, EmbedBuilder, TextChannel } from 'discord.js';
+import { ApplicationCommandOptionType, ApplicationCommandType, ChannelType, EmbedBuilder, TextChannel } from 'discord.js';
 import { sprintf } from 'sprintf-js';
 
 import { prisma } from '../prisma/prisma';
@@ -21,6 +21,7 @@ import {
 export default new Command({
 	name: 'guild',
 	description: 'Guild Configuration',
+	type: ApplicationCommandType.ChatInput,
 	options: [
 		{
 			type: ApplicationCommandOptionType.SubcommandGroup,
@@ -225,7 +226,7 @@ export default new Command({
 					const { name: channelOptionName, value: channelId } = option;
 					const targetChannel = option.channel as TextChannel;
 
-					if (!targetChannel.topic) {
+					if (targetChannel.type === ChannelType.GuildText && !targetChannel.topic) {
 						failReplyArray.push(
 							sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
 								setChannelName: channelOptionName,

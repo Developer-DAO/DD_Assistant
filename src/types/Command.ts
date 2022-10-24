@@ -1,4 +1,5 @@
 import {
+	ApplicationCommandType,
 	ChatInputApplicationCommandData,
 	CommandInteraction,
 	CommandInteractionOptionResolver,
@@ -19,9 +20,17 @@ interface CommandRunOptions {
 }
 
 type RunFunction = (options: CommandRunOptions) => any;
-export type CommandNameEmun = 'devdao' | 'guild' | 'onboard' | 'townhall' | 'birthday' | 'scan' | 'collect';
+export type CommandNameEmun =
+	| 'devdao'
+	| 'guild'
+	| 'onboard'
+	| 'townhall'
+	| 'birthday'
+	| 'scan'
+	| 'collect';
 export type CommandType = {
 	name: CommandNameEmun;
 	userPermissions?: PermissionResolvable[];
 	execute: RunFunction;
+	type: ApplicationCommandType.ChatInput;
 } & ChatInputApplicationCommandData;

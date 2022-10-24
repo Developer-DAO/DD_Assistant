@@ -1,6 +1,6 @@
 export class TimeOutError extends Error {
 	public constructor() {
-		super('Time Out');
+		super('Time out');
 		this.name = this.constructor.name;
 	}
 }

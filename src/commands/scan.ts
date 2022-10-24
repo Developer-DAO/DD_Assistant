@@ -1,6 +1,7 @@
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionType,
+	ApplicationCommandType,
 	ButtonBuilder,
 	ButtonStyle,
 	CategoryChannel,
@@ -14,6 +15,7 @@ import {
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { ButtonCollectorCustomId } from '../types/Button';
 import { ChannelScanCache } from '../types/Cache';
 import { awaitWrapSendRequestReturnValue } from '../types/Util';
 import { NUMBER } from '../utils/const';
@@ -24,6 +26,7 @@ import {
 	checkChannelPermission,
 	embedFieldsFactory,
 	getNotificationMsg,
+	getParentInform,
 	scanChannel,
 	serializeChannelScan
 } from '../utils/util';
@@ -31,6 +34,7 @@ import {
 export default new Command({
 	name: 'scan',
 	description: 'Channel Management',
+	type: ApplicationCommandType.ChatInput,
 	options: [
 		{
 			type: ApplicationCommandOptionType.Subcommand,
@@ -95,6 +99,20 @@ export default new Command({
 					description: 'Choose a category channel to be deleted',
 					channelTypes: [ChannelType.GuildCategory],
 					required: true
+				}
+			]
+		},
+		{
+			type: ApplicationCommandOptionType.Subcommand,
+			name: 'exclude',
+			description: 'Exclude channels from channel scan',
+			options: [
+				{
+					type: ApplicationCommandOptionType.String,
+					name: 'channel',
+					description: 'Choose a channel to be excluded',
+					required: true,
+					autocomplete: true
 				}
 			]
 		}
@@ -241,23 +259,23 @@ export default new Command({
 				return [
 					new ActionRowBuilder<ButtonBuilder>().addComponents([
 						new ButtonBuilder()
-							.setCustomId('first')
+							.setCustomId(ButtonCollectorCustomId.First)
 							.setLabel('First Page')
 							.setEmoji('⏮️')
 							.setStyle(ButtonStyle.Primary)
 							.setDisabled(index === 0),
 						new ButtonBuilder()
-							.setCustomId('previous')
+							.setCustomId(ButtonCollectorCustomId.Previous)
 							.setEmoji('⬅️')
 							.setStyle(ButtonStyle.Secondary)
 							.setDisabled(index === 0),
 						new ButtonBuilder()
-							.setCustomId('next')
+							.setCustomId(ButtonCollectorCustomId.Next)
 							.setEmoji('➡️')
 							.setStyle(ButtonStyle.Secondary)
 							.setDisabled(index === embedContentArray.length - 1),
 						new ButtonBuilder()
-							.setCustomId('last')
+							.setCustomId(ButtonCollectorCustomId.Last)
 							.setLabel('Last Page')
 							.setEmoji('⏭️')
 							.setStyle(ButtonStyle.Primary)
@@ -275,7 +293,7 @@ export default new Command({
 				embeds: [embedContentArray[page]],
 				components: buttonGenerator(page)
 			});
-			const filter = (i: Interaction) => true;
+			const filter = (i: Interaction) => i.user.id === interaction.user.id;
 
 			const collector = msg.createMessageComponentCollector({
 				filter,
@@ -285,16 +303,16 @@ export default new Command({
 
 			collector.on('collect', async (btnInteraction) => {
 				switch (btnInteraction.customId) {
-					case 'next':
+					case ButtonCollectorCustomId.Next:
 						page++;
 						break;
-					case 'previous':
+					case ButtonCollectorCustomId.Previous:
 						page--;
 						break;
-					case 'first':
+					case ButtonCollectorCustomId.First:
 						page = 0;
 						break;
-					case 'last':
+					case ButtonCollectorCustomId.Last:
 						page = embedContentArray.length - 1;
 				}
 
@@ -307,7 +325,7 @@ export default new Command({
 
 			collector.on('end', async (collected) => {
 				await interaction.editReply({
-					content: 'Time Out, please run it again'
+					content: 'Time out ⚠️, please run it again'
 				});
 			});
 			return;
@@ -449,6 +467,53 @@ export default new Command({
 				content: `Auto Archive is disabled, Enable it through </scan auto_archive_on:${commandId}>`,
 				ephemeral: true
 			});
+		}
+
+		if (subcommandName === 'exclude') {
+			const excludedChannelId = args.getString('channel');
+			const excludedChannel = interaction.guild.channels.cache.get(
+				excludedChannelId
+			) as TextChannel;
+
+			if (!excludedChannel) {
+				return interaction.reply({
+					content: 'Sorry, I cannot find this channel.',
+					ephemeral: true
+				});
+			}
+
+			const { parentId } = getParentInform(excludedChannel.parentId, excludedChannel.parent);
+			const scanResult = myCache.myGet('ChannelScan')[guildId];
+
+			if (!scanResult?.[parentId]?.channels?.[excludedChannelId]) {
+				return interaction.reply({
+					content: 'Sorry, your input is invalid.',
+					ephemeral: true
+				});
+			} else {
+				await interaction.deferReply({ ephemeral: true });
+				delete scanResult[parentId].channels[excludedChannelId];
+				await prisma.channelScan.update({
+					where: {
+						discordId: guildId
+					},
+					data: {
+						categories: serializeChannelScan(
+							{
+								[guildId]: scanResult
+							},
+							guildId
+						).categories
+					}
+				});
+				myCache.mySet('ChannelScan', {
+					...myCache.myGet('ChannelScan'),
+					[guildId]: scanResult
+				});
+				return interaction.followUp({
+					content: `<#${excludedChannelId}> is excluded successfully from the scan. Please click </scan view:${commandId}> to check again. If you'd like to resume this channel, click </scan init:${commandId}> to init the scan again.`
+				});
+			}
 		}
 
 		if (subcommandName === 'broadcast') {

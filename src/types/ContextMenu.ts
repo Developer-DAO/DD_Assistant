@@ -1,20 +1,45 @@
 import {
-	ContextMenuCommandInteraction,
+	ApplicationCommandType,
+	GuildMember,
+	Message,
 	MessageApplicationCommandData,
+	MessageContextMenuCommandInteraction,
 	PermissionResolvable,
-	UserApplicationCommandData
+	UserApplicationCommandData,
+	UserContextMenuCommandInteraction
 } from 'discord.js';
 
-import { MyClient } from '../structures/Client';
-
-interface CommandRunOptions {
-	client: MyClient;
-	interaction: ContextMenuCommandInteraction;
+export interface ExtendedUserContextMenuInteraction extends UserContextMenuCommandInteraction {
+	targetMember: GuildMember;
 }
 
-type RunFunction = (options: CommandRunOptions) => any;
+export interface ExtendedMessageContextMenuInteraction
+	extends MessageContextMenuCommandInteraction {
+	targetMessage: Message;
+}
 
-export type ContextMenuType = {
+interface MessageContextMenuCommandRunOption {
+	interaction: ExtendedMessageContextMenuInteraction;
+}
+
+interface UserContextMenuCommandRunOption {
+	interaction: ExtendedUserContextMenuInteraction;
+}
+
+type MessageContextMenuRunFunction = (options: MessageContextMenuCommandRunOption) => any;
+type UserContextMenuRunFunction = (options: UserContextMenuCommandRunOption) => any;
+
+type ContextMenuNameEnum = 'Grab onboarding call';
+export type UserContextMenuType = {
 	userPermissions?: PermissionResolvable[];
-	execute: RunFunction;
-} & (UserApplicationCommandData | MessageApplicationCommandData);
+	execute: UserContextMenuRunFunction;
+	name: ContextMenuNameEnum;
+	type: ApplicationCommandType.User;
+} & UserApplicationCommandData;
+
+export type MessageContextMenuType = {
+	userPermissions?: PermissionResolvable[];
+	execute: MessageContextMenuRunFunction;
+	name: ContextMenuNameEnum;
+	type: ApplicationCommandType.Message
+} & MessageApplicationCommandData;

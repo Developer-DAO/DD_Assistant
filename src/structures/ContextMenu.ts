@@ -1,7 +1,13 @@
-import { ContextMenuType } from '../types/ContextMenu';
+import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMenu';
 
-export class ContextMenu {
-	public constructor(public commandOptions: ContextMenuType) {
+export class MessageContextMenu {
+	public constructor(public commandOptions: MessageContextMenuType) {
+		Object.assign(this, commandOptions);
+	}
+}
+
+export class UserContextMenu {
+	public constructor(public commandOptions: UserContextMenuType) {
 		Object.assign(this, commandOptions);
 	}
 }
