@@ -189,7 +189,7 @@ export const COMMAND_CONTENT: CommandContent = {
 		'%(index)d. Group onboarding call is currently live in %(channelInform)s 🔥🔥🔥 started (<t:%(timestamp)s:R>)\n\n',
 	ONBOARDING_END:
 		'Onboarding calls for this week have ended. We will update the latest ones soon.',
-	ONBOARDING_OPTION: '%(index)d. %(timestamp)s.',
+	ONBOARDING_OPTION: '%(index)d. %(timestamp)s',
 	WELCOME_THREAD_NAME: 'Welcome %s',
 	THREAD_WELCOME_MSG:
 		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:%(devdaoCommandId)s> and choose a query.',
@@ -508,26 +508,26 @@ export const DOCS: Record<string, ResType> = {
 };
 
 export enum WEEK {
-	Sunday = 'Sunday',
-	Monday = 'Monday',
-	Tuesday = 'Tuesday',
-	Wednesday = 'Wednesday',
-	Thursday = 'Thursday',
-	Friday = 'Friday',
-	Saturday = 'Saturday'
+	Sunday,
+	Monday,
+	Tuesday,
+	Wednesday,
+	Thursday,
+	Friday,
+	Saturday
 }
 
 export enum MONTH {
-	January = 'January',
-	February = 'February',
-	March = 'March',
-	April = 'April',
-	May = 'May',
-	June = 'June',
-	July = 'July',
-	August = 'August',
-	September = 'September',
-	October = 'October',
-	November = 'November',
-	December = 'December'
+	January,
+	February,
+	March,
+	April,
+	May,
+	June,
+	July,
+	August,
+	September,
+	October,
+	November,
+	December,
 }

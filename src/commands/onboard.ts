@@ -53,12 +53,12 @@ export default new Command({
 			const onboardingEmbeds = await fetchOnboardingSchedule(guildId);
 
 			return interaction.reply({
-				embeds: [onboardingEmbeds]
+				embeds: [onboardingEmbeds],
+				ephemeral: true
 			});
 		}
 
 		if (!myCache.myGet('Guild')[guildId].channels.introductionChannel) {
-			// todo change commandName with a clickable one
 			return interaction.reply({
 				content: `Please set up introduction channel first using \`/${interaction.commandName}\`.`,
 				ephemeral: true
@@ -156,7 +156,7 @@ export default new Command({
 
 			await interaction.deferReply({ ephemeral: true });
 			const guildInformCache = myCache.myGet('Guild')[guildId];
-			const newOnboardScheduleCache = guildInformCache.onboardSchedule;
+			const newOnboardScheduleCache = [...guildInformCache.onboardSchedule];
 			const removedSchedule = newOnboardScheduleCache.splice(index - 1, 1)[0];
 			const removedContent = sprintf(COMMAND_CONTENT.ONBOARDING_OPTION, {
 				index: index,

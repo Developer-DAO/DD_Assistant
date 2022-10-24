@@ -391,7 +391,7 @@ export default new Command({
 				...statusLockCache,
 				[guildId]: {
 					...guildStatusLockCache,
-					archiveStatus: true
+					archiveStatus: false
 				}
 			});
 			if (error) {

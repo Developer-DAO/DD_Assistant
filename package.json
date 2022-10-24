@@ -10,7 +10,7 @@
 		"watch": "tsc -w",
 		"eslint": "eslint src --ext .ts",
 		"generate": "npx prisma generate --schema ./src/prisma/schema.prisma",
-		"deploy": "rm -rf dist && npm run build && ((pm2 delete oasis && pm2 start dd.config.js) || pm2 start dd.config.js)"
+		"deploy": "rm -rf dist && npm i && npm run generate && npm run build && ((pm2 delete dd-assistant && pm2 start dd.config.js) || pm2 start dd.config.js)"
 	},
 	"keywords": [],
 	"author": "",

@@ -145,7 +145,7 @@ export function readGuildInform(guildInform: GuildInform, guildId: string): APIE
 	channelInform = Object.keys(guildInform.channels).reduce<ChannelInform>(
 		(pre: ChannelInform, cur: keyof ChannelSetting) => {
 			if (cur === 'archiveCategoryChannels') return pre;
-			pre.channelName += `> **${cur.toLocaleUpperCase()} CHANNEL**\n`;
+			pre.channelName += `> **${cur.toLocaleUpperCase()}**\n`;
 			const channel = guildInform.channels[cur];
 
 			if (channel) {
@@ -425,7 +425,7 @@ export async function searchEvent(
 		});
 	});
 	if (onboardInformArray.length === 0) {
-		return `I cannot find \`${COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME}\` event or they are outdated.`;
+		return `I cannot find \`${COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME}\` event, they are outdated, or you have added them.`;
 	}
 
 	try {
@@ -666,10 +666,15 @@ export async function autoArchive(
 	embeds?: Array<EmbedBuilder>;
 }> {
 	// to-do archive channel permission checking
-	// to-do auto archive
-	// to-do using archive_status to auto archive
 	const guildInform = myCache.myGet('Guild')[guildId];
 	const { notificationChannel: notificationChannelId } = guildInform.channels;
+
+	if (!notificationChannelId) {
+		return {
+			error: true,
+			errorMessage: 'Please set up a notification channel first'
+		};
+	}
 	const notificationChannel = guildChannelManager.cache.get(notificationChannelId) as TextChannel;
 
 	if (!notificationChannel) {
@@ -681,12 +686,6 @@ export async function autoArchive(
 	const { autoArchiveInform } = guildInform;
 	const { archiveCategoryChannels } = guildInform.channels;
 
-	if (!notificationChannelId) {
-		return {
-			error: true,
-			errorMessage: 'Please set up a notification channel first'
-		};
-	}
 	let scanResult = myCache.myGet('ChannelScan')[guildId];
 	const current = Math.floor(new Date().getTime() / 1000);
 
