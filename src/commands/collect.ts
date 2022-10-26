@@ -28,20 +28,21 @@ export default new Command({
 			const targetRole = args.getRole('target') as Role;
 			const attributes = `\uFEFFRole Name,Discord Name,Discord ID\r\n`;
 
+			await interaction.deferReply({ ephemeral: true });
+
 			if (targetRole) {
 				const roleName = targetRole.name;
 				const csvContents = targetRole.members.reduce((pre, curMember) => {
 					return pre + `${roleName},${curMember.displayName},${curMember.id}\r\n`;
 				}, attributes);
 
-				return interaction.reply({
+				return interaction.followUp({
 					files: [
 						{
 							name: 'Role_Collection.csv',
 							attachment: Buffer.from(csvContents, 'utf-8')
 						}
-					],
-					ephemeral: true
+					]
 				});
 			}
 
@@ -60,14 +61,13 @@ export default new Command({
 				);
 			}, attributes);
 
-			return interaction.reply({
+			return interaction.followUp({
 				files: [
 					{
 						name: 'Role_Collection.csv',
 						attachment: Buffer.from(csvContents, 'utf-8')
 					}
-				],
-				ephemeral: true
+				]
 			});
 		}
 	}
