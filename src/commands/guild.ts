@@ -73,7 +73,7 @@ export default new Command({
 							name: ChannelOptionName.onboarding_notification,
 							description:
 								'Set a Onboarding Notification Channel, which teams can receive the event of thread Creation',
-							channelTypes: [ChannelType.GuildText]
+							channelTypes: [ChannelType.GuildText, ChannelType.PublicThread]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
