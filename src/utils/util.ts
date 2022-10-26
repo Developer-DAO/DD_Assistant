@@ -786,7 +786,10 @@ export async function autoArchive(
 				});
 				continue;
 			}
-			await channel.setParent(targetArchieveChannelId, {
+			// todo handle error correctly, maybe the lastest one has been deleted
+			const categoryChannel = await guildChannelManager.fetch(targetArchieveChannelId) as CategoryChannel;
+
+			await channel.setParent(categoryChannel, {
 				lockPermissions: true,
 				reason: 'Inactive Channel'
 			});

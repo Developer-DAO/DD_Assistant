@@ -5,15 +5,7 @@ export interface CacheType {
 	VoiceContext: VoiceContextCache;
 	Guild: GuildCache;
 	ChannelScan: ChannelScanCache;
-	StatusLock: StatusLockCache;
 }
-
-export interface StatusLock {
-	scanStatus: boolean;
-	archiveStatus: boolean;
-	broadcastStatus: boolean;
-}
-
 export interface MemberVoiceInform {
 	[memberId: string]: {
 		timestamp: number;
@@ -42,7 +34,6 @@ export type ChannelScanCache = Record<string, GuildChannelScan>;
 export type PartialChannelInform = Omit<ChannelInform, 'channelId'>;
 export type ChannelInformCache = Record<string, PartialChannelInform>;
 export type GuildInform = Omit<Guilds, 'discordId'>;
-export type StatusLockCache = Record<string, StatusLock>;
 export type VoiceContextCache = Record<string, VoiceContextInform>;
 
 export const MYNULL = '';

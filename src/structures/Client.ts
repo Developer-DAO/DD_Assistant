@@ -14,7 +14,7 @@ import { promisify } from 'util';
 import { prisma } from '../prisma/prisma';
 import { AutoType } from '../types/Auto';
 import { ButtonType } from '../types/Button';
-import { StatusLockCache, VoiceContextCache } from '../types/Cache';
+import { VoiceContextCache } from '../types/Cache';
 import { CommandType } from '../types/Command';
 import { RegisterCommandsOptions } from '../types/CommandRegister';
 import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMenu';
@@ -22,7 +22,6 @@ import { ModalType } from '../types/Modal';
 import {
 	defaultChannelScanResult,
 	defaultGuildInform,
-	defaultStatusLock,
 	defaultVoiceContext,
 	NUMBER
 } from '../utils/const';
@@ -169,14 +168,11 @@ export class MyClient extends Client {
 	}
 
 	private async _cacheInit() {
-		const stautsLockCache: StatusLockCache = {};
 		const voiceContextCache: VoiceContextCache = {};
 
 		for (const guildId of this.guilds.cache.keys()) {
-			stautsLockCache[guildId] = defaultStatusLock;
 			voiceContextCache[guildId] = defaultVoiceContext;
 		}
-		myCache.mySet('StatusLock', stautsLockCache);
 		myCache.mySet('VoiceContext', voiceContextCache);
 
 		await prisma.$connect();

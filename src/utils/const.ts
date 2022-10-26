@@ -15,7 +15,6 @@ import {
 	GuildInform,
 	MYNULL,
 	PartialChannelInform,
-	StatusLock,
 	VoiceContextInform
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
@@ -24,7 +23,6 @@ type NumericalProperty =
 	| 'AWAIT_TIMEOUT'
 	| 'AUTOCOMPLETE_OPTION_LENGTH'
 	| 'ONBOARDING_DURATION'
-	| 'CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL'
 	| 'EMBED_CONTENT_LIMIT'
 	| 'SCAN_VIEW_DURATION'
 	| 'ARCHIVE_CHANNEL_CHILD_LIMIT'
@@ -67,13 +65,12 @@ type ResType = {
 export const NUMBER: Numerical = {
 	AWAIT_TIMEOUT: 15 * 1000,
 	AUTOCOMPLETE_OPTION_LENGTH: 25,
-	ONBOARDING_DURATION: 1 * 60,
-	CHANNEL_CHECK_BUTTON_COLLECTOR_INTERNAL: 2 * 60 * 1000,
+	ONBOARDING_DURATION: 60 * 60,
 	EMBED_CONTENT_LIMIT: 7,
 	SCAN_VIEW_DURATION: 5 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
 	ARCHIVE_EXPIRY_TIME: 72 * 3600,
-	AUTO_ARCHIVE_INTERVL: 0.2 * 60 * 1000
+	AUTO_ARCHIVE_INTERVL: 60 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -137,16 +134,9 @@ export const defaultVoiceContext: VoiceContextInform = {
 
 export const defaultChannelScanResult: GuildChannelScan = {};
 
-export const defaultStatusLock: StatusLock = {
-	archiveStatus: false,
-	broadcastStatus: false,
-	scanStatus: false
-};
-
 export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	ChannelScan: 'ChannelScan',
 	Guild: 'Guild',
-	StatusLock: 'StatusLock',
 	VoiceContext: 'VoiceContext'
 };
 export enum ChannelOptionName {
@@ -529,5 +519,5 @@ export enum MONTH {
 	September,
 	October,
 	November,
-	December,
+	December
 }

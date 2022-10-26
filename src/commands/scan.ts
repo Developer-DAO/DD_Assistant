@@ -121,25 +121,9 @@ export default new Command({
 		const guildId = interaction.guild.id;
 		const subcommandName = args.getSubcommand();
 		const { commandId } = interaction;
-		const statusLockCache = myCache.myGet('StatusLock');
-		const guildStatusLockCache = statusLockCache[guildId];
-		const { scanStatus, archiveStatus, broadcastStatus } = statusLockCache[guildId];
 
+		// todo design lock for init archive and broadcast
 		if (subcommandName === 'init') {
-			if (scanStatus) {
-				return interaction.reply({
-					content: 'Sorry, scan is going on, please wait for a while',
-					ephemeral: true
-				});
-			}
-			// todo optimize this part
-			myCache.mySet('StatusLock', {
-				...statusLockCache,
-				[guildId]: {
-					...guildStatusLockCache,
-					scanStatus: true
-				}
-			});
 			await interaction.reply({
 				content:
 					'It may take 1-2 mins to complete the scan. Please come back and check later.',
@@ -163,13 +147,6 @@ export default new Command({
 				}
 			});
 			myCache.mySet('ChannelScan', channelScanCache);
-			myCache.mySet('StatusLock', {
-				...statusLockCache,
-				[guildId]: {
-					...guildStatusLockCache,
-					scanStatus: false
-				}
-			});
 			return interaction.editReply({
 				content: `Channel Scan is completed, use </scan view:${commandId}> to check results`
 			});
@@ -181,7 +158,7 @@ export default new Command({
 
 			if (Object.keys(scanResult).length === 0) {
 				return interaction.reply({
-					content: `Please init the scan first through </scan init:${commandId}>`,
+					content: `Please init the scan first through </scan init:${commandId}> or congrats, you discord is clean.`,
 					ephemeral: true
 				});
 			}
@@ -367,19 +344,6 @@ export default new Command({
 		}
 
 		if (subcommandName === 'archive') {
-			if (archiveStatus) {
-				return interaction.reply({
-					content: 'Sorry, archive is going on, please wait for a while',
-					ephemeral: true
-				});
-			}
-			myCache.mySet('StatusLock', {
-				...statusLockCache,
-				[guildId]: {
-					...guildStatusLockCache,
-					archiveStatus: true
-				}
-			});
 			await interaction.deferReply({ ephemeral: true });
 			const { error, errorMessage, embeds } = await autoArchive(
 				interaction.guild.channels,
@@ -387,13 +351,6 @@ export default new Command({
 				interaction.guild.members.me.id
 			);
 
-			myCache.mySet('StatusLock', {
-				...statusLockCache,
-				[guildId]: {
-					...guildStatusLockCache,
-					archiveStatus: false
-				}
-			});
 			if (error) {
 				return interaction.followUp({
 					content: errorMessage
@@ -407,7 +364,7 @@ export default new Command({
 					embeds: embeds
 				});
 				return interaction.followUp({
-					content: `Archive results have been sent to ${notificationChannel.id}.`
+					content: `Archive results have been sent to <#${notificationChannel.id}>.`
 				});
 			}
 		}
@@ -517,19 +474,6 @@ export default new Command({
 		}
 
 		if (subcommandName === 'broadcast') {
-			if (broadcastStatus) {
-				return interaction.reply({
-					content: 'Sorry, broadcast is going on, please wait for a while',
-					ephemeral: true
-				});
-			}
-			myCache.mySet('StatusLock', {
-				...statusLockCache,
-				[guildId]: {
-					...guildStatusLockCache,
-					broadcastStatus: true
-				}
-			});
 			await interaction.deferReply({ ephemeral: true });
 			const botId = interaction.guild.members.me.id;
 			const sendMsgRequestArray: Array<Promise<awaitWrapSendRequestReturnValue>> = [];
@@ -585,13 +529,6 @@ export default new Command({
 			const { result, error } = await awaitWrap(Promise.all(sendMsgRequestArray));
 
 			if (error) {
-				myCache.mySet('StatusLock', {
-					...statusLockCache,
-					[guildId]: {
-						...guildStatusLockCache,
-						broadcastStatus: false
-					}
-				});
 				return interaction.followUp({
 					content: `Broadcast failed, error occured: \`${error}\``
 				});
@@ -660,13 +597,6 @@ export default new Command({
 			myCache.mySet('ChannelScan', {
 				...myCache.myGet('ChannelScan'),
 				[guildId]: scanResult
-			});
-			myCache.mySet('StatusLock', {
-				...statusLockCache,
-				[guildId]: {
-					...guildStatusLockCache,
-					broadcastStatus: false
-				}
 			});
 			return interaction.followUp({
 				embeds: [

@@ -50,7 +50,7 @@ export default new Button({
 				});
 			}
 			case 'talk_yes': {
-				await interaction.deferReply({ ephemeral: true });
+				await interaction.deferUpdate();
 				const messages = (
 					await interaction.channel.messages.fetch({
 						limit: 50
@@ -72,10 +72,11 @@ export default new Button({
 				} else {
 					if (messages.first().hasThread) {
 						if (messages.first().thread.name.startsWith('Welcome')) {
-							return interaction.followUp({
+							return interaction.editReply({
 								content: `Sorry, I have created a welcome thread <#${
 									messages.first().thread.id
-								}> for you`
+								}> for you`,
+								components: []
 							});
 						}
 						welcomeThread = await currentChannel.threads.create({
@@ -129,14 +130,16 @@ export default new Button({
 					});
 				}
 
-				return interaction.followUp({
-					content: `Your thread has been created <#${welcomeThread.id}>. Welcome to Developer DAO`
+				return interaction.editReply({
+					content: `Your thread has been created <#${welcomeThread.id}>. Welcome to Developer DAO`,
+					components: []
 				});
 			}
 			case 'talk_no':
-				return interaction.reply({
+				await interaction.deferUpdate();
+				return interaction.editReply({
 					content: 'Welcome to Developer DAO! See you in the DAO!',
-					ephemeral: true
+					components: []
 				});
 		}
 	}
