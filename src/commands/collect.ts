@@ -40,7 +40,8 @@ export default new Command({
 							name: 'Role_Collection.csv',
 							attachment: Buffer.from(csvContents, 'utf-8')
 						}
-					]
+					],
+					ephemeral: true
 				});
 			}
 
