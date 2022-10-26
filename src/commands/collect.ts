@@ -5,7 +5,7 @@ import { Command } from '../structures/Command';
 export default new Command({
 	name: 'collect',
 	description: 'Collect DAO internal data',
-    type: ApplicationCommandType.ChatInput,
+	type: ApplicationCommandType.ChatInput,
 	options: [
 		{
 			name: 'role',
@@ -65,7 +65,8 @@ export default new Command({
 						name: 'Role_Collection.csv',
 						attachment: Buffer.from(csvContents, 'utf-8')
 					}
-				]
+				],
+				ephemeral: true
 			});
 		}
 	}
