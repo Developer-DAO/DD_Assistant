@@ -107,7 +107,12 @@ export default new Command({
 							.setCustomId('end')
 							.setLabel('End this event')
 							.setEmoji('⏹️')
-							.setStyle(ButtonStyle.Danger)
+							.setStyle(ButtonStyle.Danger),
+						new ButtonBuilder()
+							.setCustomId('number')
+							.setLabel('Participants Number')
+							.setEmoji('🧮')
+							.setStyle(ButtonStyle.Primary)
 					])
 				]
 			});

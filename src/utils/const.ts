@@ -48,7 +48,6 @@ type CommandContentPropery =
 	| 'CHANNEL_WITHOUT_PARENT_PARENTID'
 	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
 	| 'DISCORD_MSG'
-	| 'ARCHIVE_CHANNEL_NAME_TEMPLATE'
 	| 'NOTIFICATION_MSG';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
@@ -69,11 +68,11 @@ type ResType = {
 export const NUMBER: Numerical = {
 	AWAIT_TIMEOUT: 15 * 1000,
 	AUTOCOMPLETE_OPTION_LENGTH: 25,
-	ONBOARDING_DURATION: 0.5 * 60,
+	ONBOARDING_DURATION: 60 * 60,
 	EMBED_CONTENT_LIMIT: 7,
-	SCAN_VIEW_DURATION: 5 * 60 * 1000,
+	SCAN_VIEW_DURATION: 2 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
-	ARCHIVE_EXPIRY_TIME: 72 * 3600,
+	ARCHIVE_EXPIRY_TIME: 72 * 36000,
 	AUTO_ARCHIVE_INTERVL: 60 * 60 * 1000
 };
 
@@ -103,7 +102,6 @@ export const defaultGuildInform: GuildInform = {
 	adminCommand: [],
 	adminMember: [],
 	adminRole: [],
-	autoArchiveInform: [],
 	onboardSchedule: [],
 	womenVibesSchedule: [],
 	channels: {
@@ -181,9 +179,9 @@ export const COMMAND_CONTENT: CommandContent = {
 	CHANNEL_SETTING_SUCCESS_REPLY:
 		'Success to set <#%(targetChannelId)s> as %(setChannelName)s channel.',
 	INTRODUCTION:
-		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or introduce yourself. Feel free to send your introduction here and click `Introduce yourself` button.',
+		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or introduce yourself. Feel free to send your **introduction here** first as message and click Introduce yourself button to talk with us.✨️',
 	WOMEN_INTRODUCTION:
-		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 women vibes calls or introduce yourself. Feel free to send your introduction here and click `Introduce yourself` button.',
+		'Hi, I am onboarding assistant 👋 Below you can check out the schedule🌈 to attend our 🔥 Women Vibes Calls✨️ or introduce yourself🌱. Feel free to send your **introduction here** first as message and click Introduce yourself button to talk with us.✨️',
 	ONBOARDING:
 		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n\n',
 	ONBOARDING_GOINGON:
@@ -204,7 +202,6 @@ export const COMMAND_CONTENT: CommandContent = {
 	CHANNEL_WITHOUT_PARENT_PARENTID: '0',
 	CHANNEL_WITHOUT_PARENT_PARENTNAME: 'No Category Name',
 	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
-	ARCHIVE_CHANNEL_NAME_TEMPLATE: 'ARCHIVE---%s',
 	NOTIFICATION_MSG:
 		'Hi, D_Ds in <#%(channelId)s>\n\nAs there has been no action taken on our request to add a description to this channel, we have interpreted this as the channel is not of material importance to the server. Therefore it has been queued for archiving.\n\nChannels that do not have a description, fall out of compliance with the new standards being established by the Server Architecture Team — as it makes it difficult for Developer DAO members to be easily navigate our Discord, and find information quickly.\n\n**We are going to archive this channel <t:%(timestamp)s:R> from this notice being sent out ⚠️**\n\nIf you believe that this channel is important and should remain, please let us know in the <#993496711798456380> channel, by creating a thread using the format below:\n\n**Thread Name**: `re [insert channel name]`\n\nThanks for your cooperation! 🧰'
 };

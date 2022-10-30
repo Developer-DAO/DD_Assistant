@@ -23,6 +23,7 @@ import {
 	autoArchive,
 	awaitWrap,
 	awaitWrapSendRequest,
+	checkCategoryPermission,
 	checkChannelPermission,
 	embedFieldsFactory,
 	getNotificationMsg,
@@ -120,6 +121,7 @@ export default new Command({
 	execute: async ({ interaction, args }) => {
 		const guildId = interaction.guild.id;
 		const subcommandName = args.getSubcommand();
+		const botId = interaction.guild.members.me.id;
 		const { commandId } = interaction;
 
 		// todo design lock for init archive and broadcast
@@ -299,47 +301,64 @@ export default new Command({
 				});
 				btnInteraction.deferUpdate();
 			});
-
-			collector.on('end', async (collected) => {
-				await interaction.editReply({
-					content: 'Time out ⚠️, please run it again'
-				});
-			});
 			return;
 		}
 
 		if (subcommandName === 'delete') {
+			// to-do when deleting, if it deletes channels listed in the scan result, more actions needed
 			const targetCategoryChannel = args.getChannel('channel') as CategoryChannel;
+			const permissionCheckingResult = checkCategoryPermission(targetCategoryChannel, botId);
 
-			if (targetCategoryChannel.children.cache.size === 0) {
-				targetCategoryChannel.delete();
+			if (permissionCheckingResult) {
 				return interaction.reply({
-					content: `Category Channel \`${targetCategoryChannel.name}\` has been deleted`,
+					content: permissionCheckingResult,
 					ephemeral: true
 				});
 			}
+			const guildInform = myCache.myGet('Guild')[guildId];
 
-			// to-do what happens when deleting the category channel first before deleting channels under it
 			await interaction.deferReply({ ephemeral: true });
-			const undeletableChannelIds = [];
-			const deletePromise = targetCategoryChannel.children.cache
-				.filter((channelObj) => {
-					if (channelObj.deletable) return true;
-					else {
-						undeletableChannelIds.push(channelObj.id);
-						return false;
+			if (targetCategoryChannel.children.cache.size === 0) {
+				await targetCategoryChannel.delete();
+			} else {
+				// to-do what happens when deleting the category channel first before deleting channels under it
+				// to-do check if channel can be deleted
+				const undeletableChannelIds = [];
+				const deletePromise = targetCategoryChannel.children.cache
+					.filter((channelObj) => {
+						if (channelObj.deletable) return true;
+						else {
+							undeletableChannelIds.push(channelObj.id);
+							return false;
+						}
+					})
+					.map((channelObj) => channelObj.delete());
+
+				await Promise.all(deletePromise);
+				await targetCategoryChannel.delete();
+			}
+			const index = guildInform.channels.archiveCategoryChannels.indexOf(
+				targetCategoryChannel.id
+			);
+
+			if (index !== -1) {
+				guildInform.channels.archiveCategoryChannels.splice(index, 1);
+				await prisma.guilds.update({
+					where: {
+						discordId: guildId
+					},
+					data: {
+						channels: guildInform.channels
 					}
-				})
-				.map((channelObj) => channelObj.delete());
-
-			Promise.all(deletePromise);
-
-			if (targetCategoryChannel.deletable) {
-				targetCategoryChannel.delete();
+				});
+				myCache.mySet('Guild', {
+					...myCache.myGet('Guild'),
+					[guildId]: guildInform
+				});
 			}
 
 			return interaction.followUp({
-				content: 'Delete Completed.'
+				content: `Category Channel \`${targetCategoryChannel.name}\` has been deleted`
 			});
 		}
 
@@ -348,7 +367,7 @@ export default new Command({
 			const { error, errorMessage, embeds } = await autoArchive(
 				interaction.guild.channels,
 				guildId,
-				interaction.guild.members.me.id
+				botId
 			);
 
 			if (error) {
@@ -475,7 +494,6 @@ export default new Command({
 
 		if (subcommandName === 'broadcast') {
 			await interaction.deferReply({ ephemeral: true });
-			const botId = interaction.guild.members.me.id;
 			const sendMsgRequestArray: Array<Promise<awaitWrapSendRequestReturnValue>> = [];
 			const unfetchableChannelNameArray: Array<string> = [];
 			const failSendMsgChannelIdArray: Array<string> = [];

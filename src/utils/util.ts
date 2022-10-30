@@ -242,6 +242,16 @@ export function checkChannelPermission(channel: TextChannel, userId: string) {
 	return false;
 }
 
+export function checkCategoryPermission(channel: CategoryChannel, userId: string) {
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
+		return 'Missing **VIEW CHANNEL** access';
+	}
+	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
+		return 'Missing **MANAGE CHANNEL** access';
+	}
+	return false;
+}
+
 export function checkVoiceChannelPermission(channel: VoiceChannel, userId: string) {
 	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
 		return 'Missing **VIEW CHANNEL** access';
@@ -732,8 +742,7 @@ export async function autoArchive(
 			errorMessage: `Notification channel <#${notificationChannelId}> is unfetchable.`
 		};
 	}
-	const { autoArchiveInform } = guildInform;
-	const { archiveCategoryChannels } = guildInform.channels;
+	const { archiveCategoryChannels: currentArchiveCategoryChannels } = guildInform.channels;
 
 	let scanResult = myCache.myGet('ChannelScan')[guildId];
 	const current = Math.floor(new Date().getTime() / 1000);
@@ -774,47 +783,29 @@ export async function autoArchive(
 
 	const { length } = toBeArchived;
 
-	const limit = NUMBER.ARCHIVE_CHANNEL_CHILD_LIMIT;
+	const categoryChannelChildlimit = NUMBER.ARCHIVE_CHANNEL_CHILD_LIMIT;
 	let counter = 0;
+	const newArchiveCategoryChannels: Array<string> = [];
 	const failChannels: Array<archiveInform> = [];
 	const successChannels: Array<successArchiveInform> = [];
 
 	while (true) {
-		const latestAutoArchiveInform = _.last(autoArchiveInform);
-		let remainingSpace: number;
-		let targetArchieveChannelId: string;
+		const archiveChannel = await guildChannelManager.create({
+			name: 'Archived by D_D Assistant',
+			type: ChannelType.GuildCategory,
+			permissionOverwrites: [
+				{
+					id: guildId,
+					deny: [PermissionFlagsBits.ViewChannel]
+				}
+			]
+		});
 
-		if (!latestAutoArchiveInform || latestAutoArchiveInform.remaining === 0) {
-			const archiveChannel = await guildChannelManager.create({
-				name: sprintf(
-					COMMAND_CONTENT.ARCHIVE_CHANNEL_NAME_TEMPLATE,
-					autoArchiveInform.length + 1
-				),
-				type: ChannelType.GuildCategory,
-				permissionOverwrites: [
-					{
-						id: guildId,
-						deny: [PermissionFlagsBits.ViewChannel]
-					}
-				]
-			});
-
-			autoArchiveInform.push({
-				channelId: archiveChannel.id,
-				remaining: limit
-			});
-			targetArchieveChannelId = archiveChannel.id;
-			remainingSpace = limit;
-		} else {
-			targetArchieveChannelId = latestAutoArchiveInform.channelId;
-			remainingSpace = latestAutoArchiveInform.remaining;
-		}
-
-		let moveCounter = 0;
+		newArchiveCategoryChannels.push(archiveChannel.id);
 
 		for (const { parentId, channelId } of toBeArchived.slice(
 			counter,
-			counter + remainingSpace
+			counter + categoryChannelChildlimit
 		)) {
 			const channel = guildChannelManager.cache.get(channelId) as TextChannel;
 
@@ -835,12 +826,8 @@ export async function autoArchive(
 				});
 				continue;
 			}
-			// todo handle error correctly, maybe the lastest one has been deleted
-			const categoryChannel = (await guildChannelManager.fetch(
-				targetArchieveChannelId
-			)) as CategoryChannel;
 
-			await channel.setParent(categoryChannel, {
+			await channel.setParent(archiveChannel, {
 				lockPermissions: true,
 				reason: 'Inactive Channel'
 			});
@@ -848,21 +835,16 @@ export async function autoArchive(
 			successChannels.push({
 				parentId: parentId,
 				channelId: channelId,
-				currentParentId: targetArchieveChannelId
+				currentParentId: archiveChannel.id
 			});
-			moveCounter++;
 		}
-		autoArchiveInform.splice(autoArchiveInform.length - 1, 1, {
-			channelId: targetArchieveChannelId,
-			remaining: remainingSpace - moveCounter
-		});
-		if (counter + remainingSpace > length) break;
-		counter += remainingSpace;
+		if (counter + categoryChannelChildlimit > length) break;
+		counter += categoryChannelChildlimit;
 	}
 
 	const toBeCachedArchiveCategoryChannel = _.uniq([
-		...archiveCategoryChannels,
-		...autoArchiveInform.map(({ channelId }) => channelId)
+		...currentArchiveCategoryChannels,
+		...newArchiveCategoryChannels
 	]);
 
 	await prisma.guilds.update({
@@ -870,7 +852,6 @@ export async function autoArchive(
 			discordId: guildId
 		},
 		data: {
-			autoArchiveInform: autoArchiveInform,
 			channels: {
 				...guildInform.channels,
 				archiveCategoryChannels: toBeCachedArchiveCategoryChannel
@@ -885,8 +866,7 @@ export async function autoArchive(
 			channels: {
 				...guildInform.channels,
 				archiveCategoryChannels: toBeCachedArchiveCategoryChannel
-			},
-			autoArchiveInform: autoArchiveInform
+			}
 		}
 	});
 
@@ -969,6 +949,9 @@ export async function deleteChannelHandler(
 	guildId: string
 ) {
 	const scanResult = myCache.myGet('ChannelScan')[guildId];
+
+	// to-do consider cases: channel not exist or parent not exist
+	if (!scanResult?.[parentId]?.channels?.[deletedChannel.id]) return;
 
 	delete scanResult[parentId].channels[deletedChannel.id];
 	if (Object.keys(scanResult[parentId].channels).length === 0) {

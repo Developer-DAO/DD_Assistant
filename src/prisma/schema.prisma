@@ -15,7 +15,6 @@ model Guilds {
     adminCommand       String[]                   @default([])
     adminMember        String[]                   @default([])
     adminRole          String[]                   @default([])
-    autoArchiveInform  AutoArchiveChannelInform[]
     onboardSchedule    OnboardInform[]
     womenVibesSchedule OnboardInform[]
     channels           ChannelSetting
@@ -60,9 +59,4 @@ type Category {
 type OnboardInform {
     timestamp String
     eventLink String
-}
-
-type AutoArchiveChannelInform {
-    channelId String
-    remaining Int
 }
