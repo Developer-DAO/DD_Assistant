@@ -19,6 +19,7 @@ import { CommandType } from '../types/Command';
 import { RegisterCommandsOptions } from '../types/CommandRegister';
 import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMenu';
 import { ModalType } from '../types/Modal';
+import { CallType } from '../types/Util';
 import {
 	defaultChannelScanResult,
 	defaultGuildInform,
@@ -254,10 +255,10 @@ export class MyClient extends Client {
 				const botId = guild.members.me.id;
 
 				if (introductionChannel) {
-					await checkStickyAndInit(guild.channels, introductionChannel, botId);
+					await checkStickyAndInit(guild.channels, introductionChannel, botId, CallType.ONBOARDING);
 				}
 				if (womenIntroductionChannel) {
-					await checkStickyAndInit(guild.channels, womenIntroductionChannel, botId);
+					await checkStickyAndInit(guild.channels, womenIntroductionChannel, botId, CallType.WOMENVIBES);
 				}
 			}
 		}

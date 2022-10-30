@@ -1,59 +1,44 @@
-import {
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	EmbedBuilder,
-	MessageType,
-	TextChannel,
-	ThreadChannel
-} from 'discord.js';
+import { EmbedBuilder, MessageType, TextChannel, ThreadChannel } from 'discord.js';
 import { sprintf } from 'sprintf-js';
 
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
+import { CallType } from '../types/Util';
 import { COMMAND_CONTENT } from '../utils/const';
-import { fetchOnboardingSchedule } from '../utils/util';
+import { fetchCallSchedule } from '../utils/util';
 
 export default new Button({
-	customIds: ['schedule', 'talk', 'talk_yes', 'talk_no'],
+	customIds: ['schedule', 'talk'],
 	execute: async ({ interaction }) => {
 		const { guildId } = interaction;
 
 		switch (interaction.customId) {
 			case 'schedule': {
-				const onboardingEmbeds = await fetchOnboardingSchedule(guildId);
+				const { introductionChannel, womenIntroductionChannel } =
+					myCache.myGet('Guild')[guildId].channels;
+				let callEmbed: EmbedBuilder;
+
+				if (interaction.channelId === introductionChannel) {
+					callEmbed = await fetchCallSchedule(guildId, CallType.ONBOARDING);
+				} else if (interaction.channelId === womenIntroductionChannel) {
+					callEmbed = await fetchCallSchedule(guildId, CallType.WOMENVIBES);
+				} else {
+					return interaction.reply({
+						content: 'Sorry, the button you click does not exist.',
+						ephemeral: true
+					});
+				}
 
 				return interaction.reply({
-					embeds: [onboardingEmbeds],
+					embeds: [callEmbed],
 					ephemeral: true
 				});
 			}
 			case 'talk': {
-				return interaction.reply({
-					content:
-						"✅ **Yes** -- Create a thread for you and our onboarding team members will reach you out.\n\n❌ **No** -- I'd like to walk through and hang out.",
-					components: [
-						new ActionRowBuilder<ButtonBuilder>().addComponents([
-							new ButtonBuilder()
-								.setCustomId('talk_yes')
-								.setLabel('Yes')
-								.setStyle(ButtonStyle.Primary)
-								.setEmoji('✅'),
-							new ButtonBuilder()
-								.setCustomId('talk_no')
-								.setLabel('No')
-								.setEmoji('❌')
-								.setStyle(ButtonStyle.Secondary)
-						])
-					],
-					ephemeral: true
-				});
-			}
-			case 'talk_yes': {
-				await interaction.deferUpdate();
+				await interaction.deferReply({ ephemeral: true });
 				const messages = (
 					await interaction.channel.messages.fetch({
-						limit: 50
+						limit: 25
 					})
 				).filter(
 					(msg) => msg.author.id === interaction.user.id && msg.type !== MessageType.Reply
@@ -72,7 +57,7 @@ export default new Button({
 				} else {
 					if (messages.first().hasThread) {
 						if (messages.first().thread.name.startsWith('Welcome')) {
-							return interaction.editReply({
+							return interaction.followUp({
 								content: `Sorry, I have created a welcome thread <#${
 									messages.first().thread.id
 								}> for you`,
@@ -93,7 +78,6 @@ export default new Button({
 				const onboardNotifyChannel = interaction.guild.channels.cache.get(
 					onboardNotificationChannel
 				) as TextChannel;
-				const onboardEmbeds = await fetchOnboardingSchedule(guildId);
 
 				if (currentChannel.id === introductionChannel) {
 					const devdaoCommand = interaction.guild.commands.cache.find(
@@ -105,13 +89,11 @@ export default new Button({
 						content: sprintf(COMMAND_CONTENT.THREAD_WELCOME_MSG, {
 							newComerId: interaction.user.id,
 							devdaoCommandId: devdaoCommandId
-						}),
-						embeds: [onboardEmbeds]
+						})
 					});
 				} else {
 					welcomeThread.send({
-						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG,
-						embeds: [onboardEmbeds]
+						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG
 					});
 				}
 
@@ -130,17 +112,11 @@ export default new Button({
 					});
 				}
 
-				return interaction.editReply({
+				return interaction.followUp({
 					content: `Your thread has been created <#${welcomeThread.id}>. Welcome to Developer DAO`,
 					components: []
 				});
 			}
-			case 'talk_no':
-				await interaction.deferUpdate();
-				return interaction.editReply({
-					content: 'Welcome to Developer DAO! See you in the DAO!',
-					components: []
-				});
 		}
 	}
 });

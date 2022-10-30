@@ -33,9 +33,13 @@ type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
 	| 'CHANNEL_SETTING_SUCCESS_REPLY'
 	| 'INTRODUCTION'
+	| 'WOMEN_INTRODUCTION'
 	| 'ONBOARDING'
 	| 'ONBOARDING_END'
-	| 'ONBOARDING_OPTION'
+	| 'WOMENVIBES'
+	| 'WOMENVIBES_GOINGON'
+	| 'WOMENVIBES_END'
+	| 'WOMENVIBES_CALL_EVENT_NAME'
 	| 'ONBOARDING_GOINGON'
 	| 'THREAD_WELCOME_MSG'
 	| 'WELCOME_THREAD_NAME'
@@ -65,7 +69,7 @@ type ResType = {
 export const NUMBER: Numerical = {
 	AWAIT_TIMEOUT: 15 * 1000,
 	AUTOCOMPLETE_OPTION_LENGTH: 25,
-	ONBOARDING_DURATION: 60 * 60,
+	ONBOARDING_DURATION: 0.5 * 60,
 	EMBED_CONTENT_LIMIT: 7,
 	SCAN_VIEW_DURATION: 5 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
@@ -101,12 +105,14 @@ export const defaultGuildInform: GuildInform = {
 	adminRole: [],
 	autoArchiveInform: [],
 	onboardSchedule: [],
+	womenVibesSchedule: [],
 	channels: {
 		introductionChannel: MYNULL,
 		womenIntroductionChannel: MYNULL,
 		notificationChannel: MYNULL,
 		onboardNotificationChannel: MYNULL,
 		onboardChannel: MYNULL,
+		womenVibesChannel: MYNULL,
 		celebrateChannel: MYNULL,
 		archiveCategoryChannels: []
 	},
@@ -145,6 +151,7 @@ export enum ChannelOptionName {
 	introduction = 'introduction',
 	women_introduction = 'women_introduction',
 	onboarding = 'onboarding',
+	women_vibe = 'women_vibe',
 	onboarding_notification = 'onboarding_notification',
 	archive = 'archive'
 }
@@ -156,6 +163,7 @@ export const channelOptionNameToDBPropery: Readonly<
 	introduction: 'introductionChannel',
 	women_introduction: 'womenIntroductionChannel',
 	onboarding: 'onboardChannel',
+	women_vibe: 'womenVibesChannel',
 	onboarding_notification: 'onboardNotificationChannel',
 	archive: 'archiveCategoryChannels'
 };
@@ -167,19 +175,27 @@ interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandO
 
 export const COMMAND_CONTENT: CommandContent = {
 	ONBOARDING_CALL_EVENT_NAME: 'Group Onboarding Call',
+	WOMENVIBES_CALL_EVENT_NAME: 'D_D Women Vibes',
 	CHANNEL_SETTING_FAIL_REPLY:
 		'Fail to set <#%(targetChannelId)s> as %(setChannelName)s channel, because of %(reason)s.',
 	CHANNEL_SETTING_SUCCESS_REPLY:
 		'Success to set <#%(targetChannelId)s> as %(setChannelName)s channel.',
 	INTRODUCTION:
-		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or chat with a D_D community manager 🤝',
+		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or introduce yourself. Feel free to send your introduction here and click `Introduce yourself` button.',
+	WOMEN_INTRODUCTION:
+		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 women vibes calls or introduce yourself. Feel free to send your introduction here and click `Introduce yourself` button.',
 	ONBOARDING:
 		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n\n',
 	ONBOARDING_GOINGON:
 		'%(index)d. Group onboarding call is currently live in %(channelInform)s 🔥🔥🔥 started (<t:%(timestamp)s:R>)\n\n',
 	ONBOARDING_END:
 		'Onboarding calls for this week have ended. We will update the latest ones soon.',
-	ONBOARDING_OPTION: '%(index)d. %(timestamp)s',
+	WOMENVIBES:
+		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n\n',
+	WOMENVIBES_GOINGON:
+		'%(index)d. Women Vibes call is currently live in %(channelInform)s 🔥🔥🔥 started (<t:%(timestamp)s:R>)\n\n',
+	WOMENVIBES_END:
+		'Women Vibes calls for this week have ended. We will update the latest ones soon.',
 	WELCOME_THREAD_NAME: 'Welcome %s',
 	THREAD_WELCOME_MSG:
 		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:%(devdaoCommandId)s> and choose a query.',
@@ -204,7 +220,30 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 				.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 				.setCustomId('talk')
-				.setLabel('Talk with us')
+				.setLabel('Introduce yourself')
+				.setEmoji('📢')
+				.setStyle(ButtonStyle.Secondary)
+			// new ButtonBuilder()
+			// 	.setCustomId('instruction')
+			// 	.setLabel('DAO Instruction')
+			// 	.setEmoji('📚')
+			// 	.setStyle(ButtonStyle.Success)
+		])
+	]
+};
+
+export const WOMENSTICKYMSG: Readonly<MessageReplyOptions> = {
+	content: COMMAND_CONTENT.WOMEN_INTRODUCTION,
+	components: [
+		new ActionRowBuilder<ButtonBuilder>().addComponents([
+			new ButtonBuilder()
+				.setCustomId('schedule')
+				.setLabel('D_D Women Schedule')
+				.setEmoji('📆')
+				.setStyle(ButtonStyle.Primary),
+			new ButtonBuilder()
+				.setCustomId('talk')
+				.setLabel('Introduce yourself')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
 			// new ButtonBuilder()
@@ -228,10 +267,6 @@ export const COMMAND_CHOICES: Array<ExtendedApplicationCommandOptionChoiceData> 
 	{
 		name: 'guild',
 		value: 'guild'
-	},
-	{
-		name: 'onboard',
-		value: 'onboard'
 	},
 	{
 		name: 'townhall',

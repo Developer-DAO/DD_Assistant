@@ -30,7 +30,7 @@ import {
 	GuildChannelScan,
 	GuildInform
 } from '../types/Cache';
-import { awaitWrapSendRequestReturnValue, parentChannelInform } from '../types/Util';
+import { awaitWrapSendRequestReturnValue, CallType, parentChannelInform } from '../types/Util';
 import {
 	COMMAND_CONTENT,
 	defaultPartialChannelInform,
@@ -38,7 +38,8 @@ import {
 	MONTH,
 	NUMBER,
 	STICKYMSG,
-	WEEK
+	WEEK,
+	WOMENSTICKYMSG
 } from './const';
 import { TimeOutError } from './error';
 export interface awaitWrapType<T> {
@@ -322,23 +323,53 @@ export async function stickyMsgHandler(
 	(await curChannel.messages.fetch({ limit: 25 }))
 		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
 		.forEach((msg) => msg.delete());
-	return curChannel.send(STICKYMSG);
+	const guildId = curChannel.guildId;
+	const { introductionChannel } = myCache.myGet('Guild')[guildId].channels;
+
+	if (curChannel.id === introductionChannel) {
+		return curChannel.send(STICKYMSG);
+	} else {
+		return curChannel.send(WOMENSTICKYMSG);
+	}
 }
 
-export async function fetchOnboardingSchedule(guildId: string) {
-	let description = '';
-	const guildInform = myCache.myGet('Guild')[guildId];
+export async function fetchCallSchedule(guildId: string, type: CallType) {
+	const { womenVibesSchedule, onboardSchedule, channels } = myCache.myGet('Guild')[guildId];
+	let callSchedule: Array<OnboardInform> = [];
+	let callEnd: string;
+	let callGoingOn: string;
+	let callToBeHosted: string;
+	let callVoiceChannel: string;
+	let prismaPropertyName: string;
+	let embedTitle: string;
 
-	if (guildInform.onboardSchedule.length === 0) {
-		description = COMMAND_CONTENT.ONBOARDING_END;
+	if (type === CallType.ONBOARDING) {
+		callSchedule = onboardSchedule;
+		callEnd = COMMAND_CONTENT.ONBOARDING_END;
+		callGoingOn = COMMAND_CONTENT.ONBOARDING_GOINGON;
+		callToBeHosted = COMMAND_CONTENT.ONBOARDING;
+		callVoiceChannel = channels.onboardChannel;
+		prismaPropertyName = 'onboardSchedule';
+		embedTitle = 'Onboarding Schedule';
 	} else {
-		const onboardChannelContent = guildInform.channels.onboardChannel
-			? ` in <#${guildInform.channels.onboardChannel}>`
-			: '';
-		const time = Math.floor(new Date().getTime() / 1000);
-		const toBeUpdatedSchedule = [...guildInform.onboardSchedule];
+		callSchedule = womenVibesSchedule;
+		callEnd = COMMAND_CONTENT.WOMENVIBES_END;
+		callGoingOn = COMMAND_CONTENT.WOMENVIBES_GOINGON;
+		callToBeHosted = COMMAND_CONTENT.WOMENVIBES;
+		callVoiceChannel = channels.womenVibesChannel;
+		prismaPropertyName = 'womenVibesSchedule';
+		embedTitle = 'Women Vibes Schedule';
+	}
+	let description = '';
 
-		guildInform.onboardSchedule
+	if (callSchedule.length === 0) {
+		description = callEnd;
+	} else {
+		const onboardChannelContent = callVoiceChannel ? ` in <#${callVoiceChannel}>` : '';
+		const time = Math.floor(new Date().getTime() / 1000);
+		const toBeUpdatedSchedule = [...callSchedule];
+
+		callSchedule
 			.sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
 			.forEach((onboardInform, index) => {
 				const timestamp = Number(onboardInform.timestamp);
@@ -350,52 +381,70 @@ export async function fetchOnboardingSchedule(guildId: string) {
 				}
 
 				if (time > timestamp && time < timestamp + NUMBER.ONBOARDING_DURATION) {
-					description += sprintf(COMMAND_CONTENT.ONBOARDING_GOINGON, {
+					description += sprintf(callGoingOn, {
 						...onboardInform,
 						index: index + 1,
 						channelInform: onboardChannelContent
 					});
 					return;
 				}
-				description += sprintf(COMMAND_CONTENT.ONBOARDING, {
+				description += sprintf(callToBeHosted, {
 					...onboardInform,
 					index: index + 1
 				});
 			});
 
-		if (toBeUpdatedSchedule.length !== guildInform.onboardSchedule.length) {
+		if (toBeUpdatedSchedule.length !== callSchedule.length) {
 			await prisma.guilds.update({
 				where: {
 					discordId: guildId
 				},
 				data: {
-					onboardSchedule: toBeUpdatedSchedule
+					[prismaPropertyName]: toBeUpdatedSchedule
 				}
 			});
-			guildInform.onboardSchedule = [...toBeUpdatedSchedule];
 			myCache.mySet('Guild', {
 				...myCache.myGet('Guild'),
-				[guildId]: guildInform
+				[guildId]: {
+					...myCache.myGet('Guild')[guildId],
+					[prismaPropertyName]: toBeUpdatedSchedule
+				}
 			});
 		}
+		if (!description) {
+			description = callEnd;
+		}
 	}
-	// prevent all events are expired, causing description is empty string
-	if (guildInform.onboardSchedule.length === 0) {
-		description = COMMAND_CONTENT.ONBOARDING_END;
-	}
-	return new EmbedBuilder().setTitle('Onboarding Schedule').setDescription(description);
+
+	return new EmbedBuilder().setTitle(embedTitle).setDescription(description);
 }
 
 export async function searchEvent(
 	embedFields: Array<APIEmbedField>,
-	guildId: string
+	guildId: string,
+	type: CallType
 ): Promise<string | false> {
 	const currentTimeStamp = Math.floor(new Date().getTime() / 1000);
 	const onboardInformArray: Array<OnboardInform> = [];
 	const guildInform = myCache.myGet('Guild')[guildId];
-	const currentOnboardSchduleTimestampArray = guildInform.onboardSchedule.map(
-		(schedule) => schedule.timestamp
-	);
+	let currentCallSchduleTimestampArray: string[];
+	let prismaPropertyName: string;
+
+	let targetEventName: string;
+
+	if (type === CallType.ONBOARDING) {
+		targetEventName = COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME;
+		currentCallSchduleTimestampArray = guildInform.onboardSchedule.map(
+			(schedule) => schedule.timestamp
+		);
+		prismaPropertyName = 'onboardSchedule';
+	} else {
+		targetEventName = COMMAND_CONTENT.WOMENVIBES_CALL_EVENT_NAME;
+		currentCallSchduleTimestampArray = guildInform.womenVibesSchedule.map(
+			(schedule) => schedule.timestamp
+		);
+		prismaPropertyName = 'womenVibesSchedule';
+	}
 
 	embedFields.forEach((field) => {
 		const { value } = field;
@@ -404,7 +453,7 @@ export async function searchEvent(
 		value.match(/\[.+\]/g)?.filter((name, index) => {
 			const eventName = name.slice(1, -1).trim();
 
-			if (eventName === COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME) {
+			if (eventName === targetEventName) {
 				eventIndex.push(index);
 				return true;
 			} else return false;
@@ -416,7 +465,7 @@ export async function searchEvent(
 		eventIndex.forEach((index) => {
 			const timestamp = matchEventTimeStamps[index].slice(3, -3);
 
-			if (currentOnboardSchduleTimestampArray.includes(timestamp)) return;
+			if (currentCallSchduleTimestampArray.includes(timestamp)) return;
 			if (currentTimeStamp > Number(timestamp)) return;
 			onboardInformArray.push({
 				timestamp: timestamp,
@@ -424,8 +473,9 @@ export async function searchEvent(
 			});
 		});
 	});
+	console.log(onboardInformArray);
 	if (onboardInformArray.length === 0) {
-		return `I cannot find \`${COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME}\` event, they are outdated, or you have added them.`;
+		return `I cannot find \`${targetEventName}\` event, they are outdated, or you have added them.`;
 	}
 
 	try {
@@ -434,7 +484,7 @@ export async function searchEvent(
 				discordId: guildId
 			},
 			data: {
-				onboardSchedule: onboardInformArray
+				[prismaPropertyName]: onboardInformArray
 			}
 		});
 	} catch (error) {
@@ -446,7 +496,7 @@ export async function searchEvent(
 		...myCache.myGet('Guild'),
 		[guildId]: {
 			...guildInformCache,
-			onboardSchedule: onboardInformArray
+			[prismaPropertyName]: onboardInformArray
 		}
 	});
 
@@ -787,7 +837,9 @@ export async function autoArchive(
 				continue;
 			}
 			// todo handle error correctly, maybe the lastest one has been deleted
-			const categoryChannel = await guildChannelManager.fetch(targetArchieveChannelId) as CategoryChannel;
+			const categoryChannel = (await guildChannelManager.fetch(
+				targetArchieveChannelId
+			)) as CategoryChannel;
 
 			await channel.setParent(categoryChannel, {
 				lockPermissions: true,
@@ -990,7 +1042,8 @@ export async function createChannelHandler(
 export async function checkStickyAndInit(
 	guildChannelManager: GuildChannelManager,
 	channelId: string,
-	botId: string
+	botId: string,
+	type: CallType
 ) {
 	const channel = guildChannelManager.cache.get(channelId) as TextChannel;
 
@@ -1000,6 +1053,10 @@ export async function checkStickyAndInit(
 			.forEach((msg) => {
 				msg.delete();
 			});
-		channel.send(STICKYMSG);
+		if (type === CallType.ONBOARDING) {
+			channel.send(STICKYMSG);
+		} else {
+			channel.send(WOMENSTICKYMSG);
+		}
 	}
 }

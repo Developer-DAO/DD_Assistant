@@ -19,8 +19,6 @@ type ButtonCustomId =
 	| 'schedule'
 	| 'talk'
 	| 'instruction'
-	| 'talk_yes'
-	| 'talk_no'
 	| 'send'
 	| 'delete';
 export enum ButtonCollectorCustomId {

@@ -1,4 +1,10 @@
-import { ApplicationCommandOptionType, ApplicationCommandType, ChannelType, EmbedBuilder, TextChannel } from 'discord.js';
+import {
+	ApplicationCommandOptionType,
+	ApplicationCommandType,
+	ChannelType,
+	EmbedBuilder,
+	TextChannel
+} from 'discord.js';
 import { sprintf } from 'sprintf-js';
 
 import { prisma } from '../prisma/prisma';
@@ -66,6 +72,13 @@ export default new Command({
 							name: ChannelOptionName.onboarding,
 							description:
 								'Set a Onboarding Voice Channel, which we hold the onboarding calls',
+							channelTypes: [ChannelType.GuildVoice]
+						},
+						{
+							type: ApplicationCommandOptionType.Channel,
+							name: ChannelOptionName.women_vibe,
+							description:
+								'Set a Women Vibes Voice Channel, which we hold the vibes calls',
 							channelTypes: [ChannelType.GuildVoice]
 						},
 						{

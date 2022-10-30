@@ -5,7 +5,7 @@ import { CallType } from '../types/Util';
 import { fetchCallSchedule, searchEvent } from '../utils/util';
 
 export default new MessageContextMenu({
-	name: 'Grab onboarding call',
+	name: 'Grab vibes vall',
 	type: ApplicationCommandType.Message,
 	execute: async ({ interaction }) => {
 		const { targetMessage, guildId } = interaction;
@@ -26,18 +26,18 @@ export default new MessageContextMenu({
 			});
 		}
 		await interaction.deferReply({ ephemeral: true });
-		const searchResult = await searchEvent(seshEmbed.fields, guildId, CallType.ONBOARDING);
+		const searchResult = await searchEvent(seshEmbed.fields, guildId, CallType.WOMENVIBES);
 
 		if (searchResult) {
 			return interaction.followUp({
 				content: searchResult
 			});
 		}
-		const onboardingEmbeds = await fetchCallSchedule(guildId, CallType.ONBOARDING);
+		const womenVibesEmbeds = await fetchCallSchedule(guildId, CallType.WOMENVIBES);
 
 		return interaction.followUp({
-			content: 'Onboarding call schedule has been updated.',
-			embeds: [onboardingEmbeds],
+			content: 'Women vibes call schedule has been updated.',
+			embeds: [womenVibesEmbeds],
 			ephemeral: true
 		});
 	}

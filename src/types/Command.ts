@@ -23,7 +23,6 @@ type RunFunction = (options: CommandRunOptions) => any;
 export type CommandNameEmun =
 	| 'devdao'
 	| 'guild'
-	| 'onboard'
 	| 'townhall'
 	| 'birthday'
 	| 'scan'
