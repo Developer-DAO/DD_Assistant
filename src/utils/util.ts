@@ -453,7 +453,7 @@ export async function searchEvent(
 		value.match(/\[.+\]/g)?.filter((name, index) => {
 			const eventName = name.slice(1, -1).trim();
 
-			if (eventName === targetEventName) {
+			if (eventName.includes(targetEventName)) {
 				eventIndex.push(index);
 				return true;
 			} else return false;
@@ -473,7 +473,6 @@ export async function searchEvent(
 			});
 		});
 	});
-	console.log(onboardInformArray);
 	if (onboardInformArray.length === 0) {
 		return `I cannot find \`${targetEventName}\` event, they are outdated, or you have added them.`;
 	}
