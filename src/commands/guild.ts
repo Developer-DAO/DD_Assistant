@@ -251,7 +251,6 @@ export default new Command({
 					}
 					const permissionChecking = checkChannelPermission(targetChannel, botId);
 
-					/// todo check whether channels have topic
 					if (permissionChecking) {
 						failReplyArray.push(
 							sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
@@ -263,8 +262,8 @@ export default new Command({
 						continue;
 					}
 					if (
-						channelOptionName === 'introduction' ||
-						channelOptionName === 'women_introduction'
+						channelOptionName === ChannelOptionName.introduction ||
+						channelOptionName === ChannelOptionName.women_introduction
 					) {
 						const permissionChecking = checkIntroductionChannelPermission(
 							targetChannel,
@@ -290,7 +289,7 @@ export default new Command({
 								preChannelId
 							) as TextChannel;
 
-							stickyMsgHandler(targetChannel, botId, preChannel);
+							stickyMsgHandler(targetChannel, botId, preChannel, channelOptionName);
 						} else {
 							stickyMsgHandler(targetChannel, botId);
 						}

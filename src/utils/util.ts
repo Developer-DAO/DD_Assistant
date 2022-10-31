@@ -32,6 +32,7 @@ import {
 } from '../types/Cache';
 import { awaitWrapSendRequestReturnValue, CallType, parentChannelInform } from '../types/Util';
 import {
+	ChannelOptionName,
 	COMMAND_CONTENT,
 	defaultPartialChannelInform,
 	ERROR_REPLY,
@@ -320,7 +321,8 @@ export function getNotificationMsg(channelId: string, timestamp: number) {
 export async function stickyMsgHandler(
 	curChannel: TextChannel,
 	botId: string,
-	preChannel?: TextChannel
+	preChannel?: TextChannel,
+	channelOptionName?: ChannelOptionName
 ) {
 	if (checkIntroductionChannelPermission(curChannel, botId)) return;
 	if (typeof preChannel !== 'undefined') {
@@ -333,6 +335,15 @@ export async function stickyMsgHandler(
 	(await curChannel.messages.fetch({ limit: 25 }))
 		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
 		.forEach((msg) => msg.delete());
+		
+	if (typeof channelOptionName !== 'undefined') {
+		if (channelOptionName === ChannelOptionName.introduction) {
+			return curChannel.send(STICKYMSG);
+		} else {
+			return curChannel.send(WOMENSTICKYMSG);
+		}
+	}
+
 	const guildId = curChannel.guildId;
 	const { introductionChannel } = myCache.myGet('Guild')[guildId].channels;
 

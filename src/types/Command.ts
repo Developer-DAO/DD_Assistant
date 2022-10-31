@@ -26,7 +26,8 @@ export type CommandNameEmun =
 	| 'townhall'
 	| 'birthday'
 	| 'scan'
-	| 'collect';
+	| 'collect'
+	| 'mentorship';
 export type CommandType = {
 	name: CommandNameEmun;
 	userPermissions?: PermissionResolvable[];

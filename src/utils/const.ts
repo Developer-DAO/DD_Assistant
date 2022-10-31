@@ -258,16 +258,16 @@ export const COMMAND_CHOICES: Array<ExtendedApplicationCommandOptionChoiceData> 
 		value: 'devdao'
 	},
 	{
-		name: 'birthday',
-		value: 'birthday'
-	},
-	{
 		name: 'guild',
 		value: 'guild'
 	},
 	{
 		name: 'townhall',
 		value: 'townhall'
+	},
+	{
+		name: 'mentorship',
+		value: 'mentorship'
 	}
 ];
 
