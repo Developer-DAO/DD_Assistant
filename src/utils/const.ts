@@ -179,9 +179,9 @@ export const COMMAND_CONTENT: CommandContent = {
 	CHANNEL_SETTING_SUCCESS_REPLY:
 		'Success to set <#%(targetChannelId)s> as %(setChannelName)s channel.',
 	INTRODUCTION:
-		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or introduce yourself. Feel free to send your **introduction here** first as message and click Introduce yourself button to talk with us.✨️',
+		'Hi, I am onboarding assistant 👋.... Below you can check out the schedule to attend our 🔥 group onboarding calls or introduce yourself. Feel free to send your **introduction here** first as message and click `Open an Intro Thread` button to talk with us.✨️',
 	WOMEN_INTRODUCTION:
-		'Hi, I am onboarding assistant 👋 Below you can check out the schedule🌈 to attend our 🔥 Women Vibes Calls✨️ or introduce yourself🌱. Feel free to send your **introduction here** first as message and click Introduce yourself button to talk with us.✨️',
+		'Hi, I am onboarding assistant 👋 Below you can check out the schedule🌈 to attend our 🔥 Women Vibes Calls✨️ or introduce yourself🌱. Feel free to send your **introduction here** first as message and click `Open an Intro Thread` button to talk with us.✨️',
 	ONBOARDING:
 		'%(index)d. <t:%(timestamp)s:F>(<t:%(timestamp)s:R>). RSVP [here](<%(eventLink)s>)\n\n',
 	ONBOARDING_GOINGON:
@@ -196,7 +196,7 @@ export const COMMAND_CONTENT: CommandContent = {
 		'Women Vibes calls for this week have ended. We will update the latest ones soon.',
 	WELCOME_THREAD_NAME: 'Welcome %s',
 	THREAD_WELCOME_MSG:
-		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nBtw, you can always walkthrough and hangout and send your questions here.\nClick the following button to grab the latest onboarding call!\n\nbtw, if you cannot make it this week, please click the notify button. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:%(devdaoCommandId)s> and choose a query.',
+		'Glad to have you in the DAO, <@%(newComerId)s>!\nI am D_D Assistant from the community guild and onboarding team. Would you like to attend our group onboarding call to have better understanding on our DAO if it would be of value for you?\n\nYou can always walkthrough and hangout and send your questions here.\nCheck the following information to grab the latest onboarding call!\n\nBtw, if you cannot make it this week, please tell us here. I will send you schedule of the next week.\n\nYou can also use our D_D Assistant Bot to query current projects and guilds. Please click: </devdao:%(devdaoCommandId)s> and choose a query.',
 	WOMEN_THREAD_WELCOME_MSG:
 		"Welcome to DevDAO Women :sparkles:\n\nDevDAO women is a Social Space for Women/Nonbinary/Ally folks within Developer DAO. :seedling:\n\nFirst say say gm on :rainbow:-gm to share the blissful energy:magic_wand:\n\nDid you pick your role yet?\n\nGo to <#960706880420859904> to pick your role.\n\nIf you identify as **Women/Nonbinary** then go for :purple_heart:\nIf **you don't identify as either of them/don't want to talk about your identity** then go for :orange_heart:\n\nIf you have any ideas/topic you wanna discuss, any questions you wanna ask or just want to send some cat pictures, them <#957712595056459938> is the place for you. :wave:\n\nDon't forget to check out <#999890882251722762> if you are looking for opportunities/looking to hire someone. :rainbow:\n\nOur team call happens in Every Friday 5.00 pm UTC. :rainbow:",
 	CHANNEL_WITHOUT_PARENT_PARENTID: '0',
@@ -217,7 +217,7 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 				.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 				.setCustomId('talk')
-				.setLabel('Introduce yourself')
+				.setLabel('Open an Intro Thread')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
 			// new ButtonBuilder()
@@ -240,7 +240,7 @@ export const WOMENSTICKYMSG: Readonly<MessageReplyOptions> = {
 				.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 				.setCustomId('talk')
-				.setLabel('Introduce yourself')
+				.setLabel('Open an Intro Thread')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
 			// new ButtonBuilder()

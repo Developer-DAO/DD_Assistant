@@ -41,7 +41,12 @@ export default new Button({
 						limit: 25
 					})
 				).filter(
-					(msg) => msg.author.id === interaction.user.id && msg.type !== MessageType.Reply
+					(msg) =>
+						msg.author.id === interaction.user.id &&
+						msg.type !== MessageType.Reply &&
+						msg.type !== MessageType.ThreadCreated &&
+						msg.type !== MessageType.ChatInputCommand &&
+						msg.type !== MessageType.ContextMenuCommand
 				);
 				let welcomeThread: ThreadChannel;
 				const currentChannel = interaction.channel as TextChannel;
@@ -84,16 +89,21 @@ export default new Button({
 						(command) => command.name === 'devdao'
 					);
 					const devdaoCommandId = devdaoCommand?.id ?? '0';
+					const callEmbed = await fetchCallSchedule(guildId, CallType.ONBOARDING);
 
 					welcomeThread.send({
 						content: sprintf(COMMAND_CONTENT.THREAD_WELCOME_MSG, {
 							newComerId: interaction.user.id,
 							devdaoCommandId: devdaoCommandId
-						})
+						}),
+						embeds: [callEmbed]
 					});
 				} else {
+					const callEmbed = await fetchCallSchedule(guildId, CallType.WOMENVIBES);
+
 					welcomeThread.send({
-						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG
+						content: COMMAND_CONTENT.WOMEN_THREAD_WELCOME_MSG,
+						embeds: [callEmbed]
 					});
 				}
 
