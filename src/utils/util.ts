@@ -448,17 +448,19 @@ export async function searchEvent(
 ): Promise<string | false> {
 	const currentTimeStamp = Math.floor(new Date().getTime() / 1000);
 	const onboardInformArray: Array<OnboardInform> = [];
+	const { onboardSchedule, womenVibesSchedule } = myCache.myGet('Guild')[guildId];
+	let currentSchedule: Array<OnboardInform>;
 	let prismaPropertyName: string;
 
 	let targetEventName: string;
 
 	if (type === CallType.ONBOARDING) {
 		targetEventName = COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME;
-
+		currentSchedule = onboardSchedule;
 		prismaPropertyName = 'onboardSchedule';
 	} else {
 		targetEventName = COMMAND_CONTENT.WOMENVIBES_CALL_EVENT_NAME;
-
+		currentSchedule = womenVibesSchedule;
 		prismaPropertyName = 'womenVibesSchedule';
 	}
 
@@ -492,28 +494,49 @@ export async function searchEvent(
 		return `I cannot find \`${targetEventName}\` event, they are outdated.`;
 	}
 
-	try {
-		await prisma.guilds.update({
-			where: {
-				discordId: guildId
-			},
-			data: {
-				[prismaPropertyName]: onboardInformArray
-			}
-		});
-	} catch (error) {
-		logger.error(error);
-		return 'Error occured when updating the database, please try again.';
-	}
-	const guildInformCache = myCache.myGet('Guild')[guildId];
+	let updateFlag = false;
 
-	myCache.mySet('Guild', {
-		...myCache.myGet('Guild'),
-		[guildId]: {
-			...guildInformCache,
-			[prismaPropertyName]: onboardInformArray
+	if (currentSchedule.length > onboardInformArray.length) {
+		const insect = _.differenceWith(
+			currentSchedule,
+			onboardInformArray,
+			(a, b) => a.timestamp === b.timestamp
+		);
+
+		if (insect.length !== 0) updateFlag = true;
+	} else {
+		const insect = _.differenceWith(
+			onboardInformArray,
+			currentSchedule,
+			(a, b) => a.timestamp === b.timestamp
+		);
+
+		if (insect.length !== 0) updateFlag = true;
+	}
+
+	if (updateFlag) {
+		try {
+			await prisma.guilds.update({
+				where: {
+					discordId: guildId
+				},
+				data: {
+					[prismaPropertyName]: onboardInformArray
+				}
+			});
+
+			myCache.mySet('Guild', {
+				...myCache.myGet('Guild'),
+				[guildId]: {
+					...myCache.myGet('Guild')[guildId],
+					[prismaPropertyName]: onboardInformArray
+				}
+			});
+		} catch (error) {
+			logger.error(error);
+			return 'Error occured when updating the database, please try again.';
 		}
-	});
+	}
 
 	return false;
 }
