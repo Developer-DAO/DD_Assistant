@@ -238,7 +238,6 @@ export class MyClient extends Client {
 		for (const [guildId, guild] of client.guilds.cache) {
 			const { autoArchiveSwitch } = guildsInform[guildId].switch;
 
-			console.log(guild.name, autoArchiveSwitch);
 			if (autoArchiveSwitch) {
 				await autoArchive(guild.channels, guildId, guild.members.me.id);
 			}

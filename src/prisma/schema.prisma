@@ -11,10 +11,10 @@ datasource db {
 }
 
 model Guilds {
-    discordId          String                     @id @map("_id")
-    adminCommand       String[]                   @default([])
-    adminMember        String[]                   @default([])
-    adminRole          String[]                   @default([])
+    discordId          String          @id @map("_id")
+    adminCommand       String[]        @default([])
+    adminMember        String[]        @default([])
+    adminRole          String[]        @default([])
     onboardSchedule    OnboardInform[]
     womenVibesSchedule OnboardInform[]
     channels           ChannelSetting
@@ -24,6 +24,13 @@ model Guilds {
 model ChannelScan {
     discordId  String     @id @map("_id")
     categories Category[]
+}
+
+model Mentorship {
+    id              String @id @default(auto()) @map("_id") @db.ObjectId
+    discordId       String
+    mentorDiscordId String
+    
 }
 
 type ChannelSetting {

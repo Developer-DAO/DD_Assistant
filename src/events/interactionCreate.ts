@@ -86,13 +86,25 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 				}
 			}
 		} catch (error) {
-			const errorMsg = sprintf(ERROR_REPLY.INTERACTION, {
-				...errorInform,
-				commandName: interaction.commandName,
-				errorName: error?.name,
-				errorMsg: error?.message,
-				errorStack: error?.stack
-			});
+			let errorMsg: string;
+
+			if (command.type === ApplicationCommandType.ChatInput) {
+				errorMsg = sprintf(ERROR_REPLY.INTERACTION, {
+					...errorInform,
+					commandName: interaction.commandName,
+					errorName: error?.name,
+					errorMsg: error?.message,
+					errorStack: error?.stack
+				});
+			} else {
+				errorMsg = sprintf(ERROR_REPLY.MENU, {
+					...errorInform,
+					commandName: interaction.commandName,
+					errorName: error?.name,
+					errorMsg: error?.message,
+					errorStack: error?.stack
+				});
+			}
 
 			if (interaction.deferred) {
 				logger.error(errorMsg);

@@ -43,6 +43,7 @@ import {
 	WOMENSTICKYMSG
 } from './const';
 import { TimeOutError } from './error';
+import { logger } from './logger';
 export interface awaitWrapType<T> {
 	result: T | null;
 	error: any | null;
@@ -335,7 +336,7 @@ export async function stickyMsgHandler(
 	(await curChannel.messages.fetch({ limit: 25 }))
 		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
 		.forEach((msg) => msg.delete());
-		
+
 	if (typeof channelOptionName !== 'undefined') {
 		if (channelOptionName === ChannelOptionName.introduction) {
 			return curChannel.send(STICKYMSG);
@@ -447,23 +448,17 @@ export async function searchEvent(
 ): Promise<string | false> {
 	const currentTimeStamp = Math.floor(new Date().getTime() / 1000);
 	const onboardInformArray: Array<OnboardInform> = [];
-	const guildInform = myCache.myGet('Guild')[guildId];
-	let currentCallSchduleTimestampArray: string[];
 	let prismaPropertyName: string;
 
 	let targetEventName: string;
 
 	if (type === CallType.ONBOARDING) {
 		targetEventName = COMMAND_CONTENT.ONBOARDING_CALL_EVENT_NAME;
-		currentCallSchduleTimestampArray = guildInform.onboardSchedule.map(
-			(schedule) => schedule.timestamp
-		);
+
 		prismaPropertyName = 'onboardSchedule';
 	} else {
 		targetEventName = COMMAND_CONTENT.WOMENVIBES_CALL_EVENT_NAME;
-		currentCallSchduleTimestampArray = guildInform.womenVibesSchedule.map(
-			(schedule) => schedule.timestamp
-		);
+
 		prismaPropertyName = 'womenVibesSchedule';
 	}
 
@@ -486,7 +481,6 @@ export async function searchEvent(
 		eventIndex.forEach((index) => {
 			const timestamp = matchEventTimeStamps[index].slice(3, -3);
 
-			if (currentCallSchduleTimestampArray.includes(timestamp)) return;
 			if (currentTimeStamp > Number(timestamp)) return;
 			onboardInformArray.push({
 				timestamp: timestamp,
@@ -495,7 +489,7 @@ export async function searchEvent(
 		});
 	});
 	if (onboardInformArray.length === 0) {
-		return `I cannot find \`${targetEventName}\` event, they are outdated, or you have added them.`;
+		return `I cannot find \`${targetEventName}\` event, they are outdated.`;
 	}
 
 	try {
@@ -508,6 +502,7 @@ export async function searchEvent(
 			}
 		});
 	} catch (error) {
+		logger.error(error);
 		return 'Error occured when updating the database, please try again.';
 	}
 	const guildInformCache = myCache.myGet('Guild')[guildId];

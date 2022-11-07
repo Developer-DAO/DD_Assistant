@@ -16,7 +16,7 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"@prisma/client": "^4.4.0",
+		"@prisma/client": "^4.5.0",
 		"@types/glob": "^8.0.0",
 		"@types/lodash": "^4.14.186",
 		"@types/sprintf-js": "^1.1.2",
@@ -36,7 +36,7 @@
 		"pino-pretty": "^9.1.1",
 		"prettier": "^2.7.1",
 		"prettier-plugin-prisma": "^4.4.0",
-		"prisma": "^4.4.0",
+		"prisma": "^4.5.0",
 		"sprintf-js": "^1.1.2"
 	}
 }
