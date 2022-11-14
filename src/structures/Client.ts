@@ -145,6 +145,13 @@ export class MyClient extends Client {
 			await this.guilds.fetch();
 			await this._cacheInit();
 			await this._loadSticky();
+			setInterval(async () => {
+				try {
+					await prisma.guilds.findFirst();
+				} catch (error) {
+					console.log(error);
+				}
+			}, 30 * 1000);
 			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
 			if (process.env.MODE === 'dev') {
 				await this._registerCommands({
@@ -254,10 +261,20 @@ export class MyClient extends Client {
 				const botId = guild.members.me.id;
 
 				if (introductionChannel) {
-					await checkStickyAndInit(guild.channels, introductionChannel, botId, CallType.ONBOARDING);
+					await checkStickyAndInit(
+						guild.channels,
+						introductionChannel,
+						botId,
+						CallType.ONBOARDING
+					);
 				}
 				if (womenIntroductionChannel) {
-					await checkStickyAndInit(guild.channels, womenIntroductionChannel, botId, CallType.WOMENVIBES);
+					await checkStickyAndInit(
+						guild.channels,
+						womenIntroductionChannel,
+						botId,
+						CallType.WOMENVIBES
+					);
 				}
 			}
 		}

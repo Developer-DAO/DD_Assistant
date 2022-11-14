@@ -27,10 +27,50 @@ model ChannelScan {
 }
 
 model Mentorship {
-    id              String @id @default(auto()) @map("_id") @db.ObjectId
+    discordId         String   @id @map("_id")
+    adminRole         String[] @default([])
+    mentorChannel     String   @default("")
+    playgroundChannel String   @default("")
+    tokenPerMin       Int      @default(0)
+}
+
+model Mentee {
+    menteeId       String  @id @map("_id")
+    discordId      String
+    discordName    String
+    mentorId       String
+    mentoName      String
+    mentorMentorId String?
+}
+
+model Mentor {
+    mentorId   String   @id @map("_id")
+    discordId  String
+    mentoName  String
+    menteesRef String[] @default([])
+    rewardsRef String[]
+}
+
+model Reward {
+    id            String @id @default(auto()) @map("_id") @db.ObjectId
+    epochId       Int
+    confirmedMins Int
+}
+
+model Epoch {
+    epochId        Int    @id @map("_id")
+    startTimestamp String
+    endTimestamp   String
+}
+
+model Record {
+    id              String  @id @default(auto()) @map("_id") @db.ObjectId
     discordId       String
+    epochId         Int
     mentorDiscordId String
-    
+    menteeDiscordId String
+    claimedMins     String
+    Confirmend      Boolean @default(false)
 }
 
 type ChannelSetting {
