@@ -5,7 +5,7 @@ import { CallType } from '../types/Util';
 import { fetchCallSchedule, searchEvent } from '../utils/util';
 
 export default new MessageContextMenu({
-	name: 'Grab onboarding call',
+	name: 'Grab Onboarding Call',
 	type: ApplicationCommandType.Message,
 	execute: async ({ interaction }) => {
 		const { targetMessage, guildId } = interaction;

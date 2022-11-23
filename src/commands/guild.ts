@@ -355,7 +355,9 @@ export default new Command({
 						discordId: process.env.GUILDID
 					},
 					data: {
-						adminRole: guildCache.adminRole
+						adminRole: {
+							push: roleId
+						}
 					}
 				});
 				myCache.mySet('Guild', {
@@ -390,7 +392,9 @@ export default new Command({
 						discordId: process.env.GUILDID
 					},
 					data: {
-						adminMember: guildCache.adminMember
+						adminMember: {
+							push: userId
+						}
 					}
 				});
 				myCache.mySet('Guild', {
@@ -418,7 +422,9 @@ export default new Command({
 						discordId: process.env.GUILDID
 					},
 					data: {
-						adminCommand: guildCache.adminCommand
+						adminCommand: {
+							push: commandName
+						}
 					}
 				});
 				myCache.mySet('Guild', {

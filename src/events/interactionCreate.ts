@@ -189,7 +189,7 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 
 			if (interaction.deferred) {
 				logger.error(errorMsg);
-				interaction.followUp({
+				return interaction.followUp({
 					content: ERROR_REPLY.COMMON
 				});
 			}
