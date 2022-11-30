@@ -27,7 +27,9 @@ export type CommandNameEmun =
 	| 'birthday'
 	| 'scan'
 	| 'collect'
-	| 'mentorship';
+	| 'mentorship'
+	| 'hashnode_sub'
+	| 'hashnode_unsub';
 export type CommandType = {
 	name: CommandNameEmun;
 	userPermissions?: PermissionResolvable[];

@@ -29,7 +29,7 @@ interface UserContextMenuCommandRunOption {
 type MessageContextMenuRunFunction = (options: MessageContextMenuCommandRunOption) => any;
 type UserContextMenuRunFunction = (options: UserContextMenuCommandRunOption) => any;
 
-type ContextMenuNameEnum = 'Grab Onboarding Call' | 'Grab Vibes Call';
+export type ContextMenuNameEnum = 'Grab Onboarding Call' | 'Grab Vibes Call';
 export type UserContextMenuType = {
 	userPermissions?: PermissionResolvable[];
 	execute: UserContextMenuRunFunction;

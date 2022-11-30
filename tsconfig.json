@@ -15,7 +15,8 @@
 		"resolveJsonModule": true,
 		"importHelpers": true,
 		"allowJs": false,
-		"removeComments": true
+		"removeComments": true,
+		"strictNullChecks": false
 	},
 	"include": ["src", "environment.d.ts"],
 	"exclude": ["node_modules", "**/*.spec.ts"]

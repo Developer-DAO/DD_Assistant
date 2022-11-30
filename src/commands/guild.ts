@@ -41,59 +41,66 @@ export default new Command({
 					options: [
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.celebration,
+							name: ChannelOptionName.Celebration,
 							description:
 								'Set a Celebration Channel, where members can receive brithday messages and other blessing',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.notification,
+							name: ChannelOptionName.Notification,
 							description:
 								'Set a Notification Channel, where SAT members will be notified with channel changes',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.introduction,
+							name: ChannelOptionName.Introduction,
 							description:
 								'Set a Introduction Channel, which members introduce themselves',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.women_introduction,
+							name: ChannelOptionName.WomenIntroduction,
 							description:
 								'Set a DevDAO Women Introcution Channel, which members introduce themselves',
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.onboarding,
+							name: ChannelOptionName.Onboarding,
 							description:
 								'Set a Onboarding Voice Channel, which we hold the onboarding calls',
 							channelTypes: [ChannelType.GuildVoice]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.women_vibe,
+							name: ChannelOptionName.WomenVibe,
 							description:
 								'Set a Women Vibes Voice Channel, which we hold the vibes calls',
 							channelTypes: [ChannelType.GuildVoice]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.onboarding_notification,
+							name: ChannelOptionName.OnboardingNotification,
 							description:
 								'Set a Onboarding Notification Channel, which teams can receive the event of thread Creation',
 							channelTypes: [ChannelType.GuildText, ChannelType.PublicThread]
 						},
 						{
 							type: ApplicationCommandOptionType.Channel,
-							name: ChannelOptionName.archive,
+							name: ChannelOptionName.Archive,
 							description:
 								'Set a Archive Category Channel, which the bot will exclude it during the channel scan',
 							channelTypes: [ChannelType.GuildCategory]
+						},
+						{
+							type: ApplicationCommandOptionType.Channel,
+							name: ChannelOptionName.HashNodeSubscription,
+							description:
+								'Set a HashNode Subscription Channel, to which the bot will send new blogs',
+							channelTypes: [ChannelType.GuildText]
 						}
 					]
 				},
@@ -262,8 +269,8 @@ export default new Command({
 						continue;
 					}
 					if (
-						channelOptionName === ChannelOptionName.introduction ||
-						channelOptionName === ChannelOptionName.women_introduction
+						channelOptionName === ChannelOptionName.Introduction ||
+						channelOptionName === ChannelOptionName.WomenIntroduction
 					) {
 						const permissionChecking = checkIntroductionChannelPermission(
 							targetChannel,

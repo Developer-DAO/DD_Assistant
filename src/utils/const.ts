@@ -27,7 +27,9 @@ type NumericalProperty =
 	| 'SCAN_VIEW_DURATION'
 	| 'ARCHIVE_CHANNEL_CHILD_LIMIT'
 	| 'ARCHIVE_EXPIRY_TIME'
-	| 'AUTO_ARCHIVE_INTERVL';
+	| 'AUTO_ARCHIVE_INTERVL'
+	| 'EMBED_PER_MSG'
+	| 'AUTO_POST_SCAN_INTERVAL';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -49,10 +51,12 @@ type CommandContentPropery =
 	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
 	| 'DISCORD_MSG'
 	| 'NOTIFICATION_MSG';
+type LinkProperty = 'DISCORD_MSG' | 'HASHNODE_API';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
 type CommandContent = Readonly<Record<CommandContentPropery, string>>;
+type LINK = Readonly<Record<LinkProperty, string>>;
 
 type ResType = {
 	channel: string;
@@ -73,7 +77,9 @@ export const NUMBER: Numerical = {
 	SCAN_VIEW_DURATION: 2 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
 	ARCHIVE_EXPIRY_TIME: 72 * 36000,
-	AUTO_ARCHIVE_INTERVL: 60 * 60 * 1000
+	AUTO_ARCHIVE_INTERVL: 60 * 60 * 1000,
+	EMBED_PER_MSG: 10,
+	AUTO_POST_SCAN_INTERVAL: 15 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -87,8 +93,9 @@ export const ERROR_REPLY: InternalError = {
 	MENU: 'User: %(userName)s Guild: %(guildName)s Error: %(errorName)s occurs when executing %(menuName)s menu. Msg: %(errorMsg)s Stack: %(errorStack)s.'
 };
 
-export const LINK = {
-	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s'
+export const LINK: LINK = {
+	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
+	HASHNODE_API: 'https://api.hashnode.com/'
 };
 
 export const ButtonCollectorCustomIdRecord: Readonly<Record<ButtonCollectorCustomId, string>> = {
@@ -112,6 +119,7 @@ export const defaultGuildInform: GuildInform = {
 		onboardChannel: MYNULL,
 		womenVibesChannel: MYNULL,
 		celebrateChannel: MYNULL,
+		hashNodeSubChannel: MYNULL,
 		archiveCategoryChannels: []
 	},
 	switch: {
@@ -141,17 +149,19 @@ export const defaultChannelScanResult: GuildChannelScan = {};
 export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	ChannelScan: 'ChannelScan',
 	Guild: 'Guild',
-	VoiceContext: 'VoiceContext'
+	VoiceContext: 'VoiceContext',
+	HashNodeSub: 'HashNodeSub'
 };
 export enum ChannelOptionName {
-	celebration = 'celebration',
-	notification = 'notification',
-	introduction = 'introduction',
-	women_introduction = 'women_introduction',
-	onboarding = 'onboarding',
-	women_vibe = 'women_vibe',
-	onboarding_notification = 'onboarding_notification',
-	archive = 'archive'
+	Celebration = 'celebration',
+	Notification = 'notification',
+	Introduction = 'introduction',
+	WomenIntroduction = 'women_introduction',
+	Onboarding = 'onboarding',
+	WomenVibe = 'women_vibe',
+	OnboardingNotification = 'onboarding_notification',
+	Archive = 'archive',
+	HashNodeSubscription = 'hashnode'
 }
 export const channelOptionNameToDBPropery: Readonly<
 	Record<ChannelOptionName, keyof ChannelSetting>
@@ -163,7 +173,8 @@ export const channelOptionNameToDBPropery: Readonly<
 	onboarding: 'onboardChannel',
 	women_vibe: 'womenVibesChannel',
 	onboarding_notification: 'onboardNotificationChannel',
-	archive: 'archiveCategoryChannels'
+	archive: 'archiveCategoryChannels',
+	hashnode: 'hashNodeSubChannel'
 };
 
 interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandOptionChoiceData {

@@ -73,6 +73,14 @@ model Record {
     Confirmend      Boolean @default(false)
 }
 
+model HashNodeSub {
+    id               String @id @default(auto()) @map("_id") @db.ObjectId
+    discordId        String
+    pubDomain        String
+    hashNodeUserName String
+    latestCuid       String @default("")
+}
+
 type ChannelSetting {
     introductionChannel        String   @default("")
     womenIntroductionChannel   String   @default("")
@@ -81,6 +89,7 @@ type ChannelSetting {
     womenVibesChannel          String   @default("")
     celebrateChannel           String   @default("")
     onboardNotificationChannel String   @default("")
+    hashNodeSubChannel         String   @default("")
     archiveCategoryChannels    String[] @default([])
 }
 

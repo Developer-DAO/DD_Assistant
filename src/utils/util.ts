@@ -30,6 +30,8 @@ import {
 	GuildChannelScan,
 	GuildInform
 } from '../types/Cache';
+import { CommandNameEmun } from '../types/Command';
+import { ContextMenuNameEnum } from '../types/ContextMenu';
 import { awaitWrapSendRequestReturnValue, CallType, parentChannelInform } from '../types/Util';
 import {
 	ChannelOptionName,
@@ -338,7 +340,7 @@ export async function stickyMsgHandler(
 		.forEach((msg) => msg.delete());
 
 	if (typeof channelOptionName !== 'undefined') {
-		if (channelOptionName === ChannelOptionName.introduction) {
+		if (channelOptionName === ChannelOptionName.Introduction) {
 			return curChannel.send(STICKYMSG);
 		} else {
 			return curChannel.send(WOMENSTICKYMSG);
@@ -1069,5 +1071,15 @@ export async function checkStickyAndInit(
 		} else {
 			channel.send(WOMENSTICKYMSG);
 		}
+	}
+}
+
+export function fetchCommandId(commandName: CommandNameEmun | ContextMenuNameEnum, guild: Guild) {
+	if (process.env.MODE === 'dev') {
+		return guild.commands.cache.filter((cmd) => cmd.name === commandName).first().id;
+	} else {
+		return guild.client.application.commands.cache
+			.filter((cmd) => cmd.name === commandName)
+			.first().id;
 	}
 }

@@ -1,10 +1,11 @@
-import { ChannelInform, Guilds } from '@prisma/client';
+import { ChannelInform, Guilds, HashNodeSub } from '@prisma/client';
 type Maybe<T> = T | null;
 
 export interface CacheType {
 	VoiceContext: VoiceContextCache;
 	Guild: GuildCache;
 	ChannelScan: ChannelScanCache;
+	HashNodeSub: HashNodeSubCache;
 }
 export interface MemberVoiceInform {
 	[memberId: string]: {
@@ -29,11 +30,14 @@ export interface GuildChannelScan {
 	};
 }
 
+export type HashNodeSubInform = Pick<HashNodeSub, 'pubDomain' | 'latestCuid' | 'id'>;
+
 type GuildCache = Record<string, GuildInform>;
 export type ChannelScanCache = Record<string, GuildChannelScan>;
 export type PartialChannelInform = Omit<ChannelInform, 'channelId'>;
 export type ChannelInformCache = Record<string, PartialChannelInform>;
 export type GuildInform = Omit<Guilds, 'discordId'>;
 export type VoiceContextCache = Record<string, VoiceContextInform>;
+export type HashNodeSubCache = Record<string, HashNodeSubInform>;
 
 export const MYNULL = '';

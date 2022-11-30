@@ -10,6 +10,7 @@
 		"watch": "tsc -w",
 		"eslint": "eslint src --ext .ts",
 		"generate": "npx prisma generate --schema ./src/prisma/schema.prisma",
+		"generate-graph": "graphql-codegen --config codegen.ts",
 		"deploy": "rm -rf dist && npm i && npm run generate && npm run build && ((pm2 delete dd-assistant && pm2 start dd.config.js) || pm2 start dd.config.js)"
 	},
 	"keywords": [],
@@ -29,6 +30,7 @@
 		"eslint-config-alloy": "^4.7.0",
 		"eslint-plugin-simple-import-sort": "^8.0.0",
 		"glob": "^8.0.3",
+		"graphql-request": "^5.0.0",
 		"lodash": "^4.17.21",
 		"node-cache": "^5.1.2",
 		"nodemon": "^2.0.20",
@@ -38,5 +40,11 @@
 		"prettier-plugin-prisma": "^4.4.0",
 		"prisma": "^4.5.0",
 		"sprintf-js": "^1.1.2"
+	},
+	"devDependencies": {
+		"@graphql-codegen/cli": "^2.14.1",
+		"@graphql-codegen/typescript": "^2.8.2",
+		"@graphql-codegen/typescript-operations": "^2.5.7",
+		"@graphql-codegen/typescript-resolvers": "^2.7.7"
 	}
 }
