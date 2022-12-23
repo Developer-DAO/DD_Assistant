@@ -5,7 +5,7 @@ import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { CommandNameEmun } from '../types/Command';
 import { EMPTYSTRING, MONTH_ENUM } from '../utils/const';
-import { awaitWrap, dateIsValid, getNextBirthday } from '../utils/util';
+import { awaitWrap, dateIsValid, fetchCommandId, getNextBirthday } from '../utils/util';
 
 export default new Command({
 	name: CommandNameEmun.Birthday,
@@ -34,11 +34,14 @@ export default new Command({
 		}
 	],
 	execute: async ({ interaction, args }) => {
-		if (!myCache.myGet('Guild')?.[interaction.guild.id]?.channels?.birthdayChannel)
+		if (!myCache.myGet('Guild')?.[interaction.guild.id]?.channels?.birthdayChannel) {
+			const guildCommandId = fetchCommandId(CommandNameEmun.Guild, interaction.guild);
+
 			return interaction.reply({
-				content: 'Please set a Birthday Celebrate Channel first.',
+				content: `Please use </guild set channel:${guildCommandId}> to set a Birthday Celebrate Channel first.`,
 				ephemeral: true
 			});
+		}
 
 		const [month, day, offset] = [
 			args.getString('month'),
