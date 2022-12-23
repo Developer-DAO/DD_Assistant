@@ -5,6 +5,9 @@ import {
 	ChannelSetting,
 	OnboardInform
 } from '@prisma/client';
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 import {
 	APIEmbedField,
 	CategoryChannel,
@@ -32,7 +35,12 @@ import {
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import { ContextMenuNameEnum } from '../types/ContextMenu';
-import { awaitWrapSendRequestReturnValue, CallType, parentChannelInform } from '../types/Util';
+import {
+	awaitWrapSendRequestReturnValue,
+	CallType,
+	GetNextBirthday,
+	parentChannelInform
+} from '../types/Util';
 import {
 	ChannelOptionName,
 	COMMAND_CONTENT,
@@ -448,6 +456,9 @@ export async function searchEvent(
 	guildId: string,
 	type: CallType
 ): Promise<string | false> {
+	if (!embedFields || embedFields.length === 0) {
+		return 'The message you chose is invalid, please check it again.';
+	}
 	const currentTimeStamp = Math.floor(new Date().getTime() / 1000);
 	const onboardInformArray: Array<OnboardInform> = [];
 	const { onboardSchedule, womenVibesSchedule } = myCache.myGet('Guild')[guildId];
@@ -1082,4 +1093,38 @@ export function fetchCommandId(commandName: CommandNameEmun | ContextMenuNameEnu
 			.filter((cmd) => cmd.name === commandName)
 			.first().id;
 	}
+}
+
+export function getNextBirthday(month: string, day: string, offset: string): GetNextBirthday {
+	dayjs.extend(utc);
+	dayjs.extend(timezone);
+
+	try {
+		const thisYear = dayjs().year();
+		let birthday = dayjs.tz(`${thisYear}-${month}-${day}`, 'YYYY-MM-DD', offset).unix();
+
+		const current = dayjs().tz(offset).valueOf();
+
+		if (current > birthday) {
+			const nextYear = thisYear + 1;
+
+			birthday = dayjs.tz(`${nextYear}-${month}-${day}`, 'YYYY-MM-DD', offset).unix();
+		}
+
+		return {
+			errorFlag: false,
+			birthday
+		};
+	} catch (error) {
+		return {
+			errorFlag: true,
+			errorMsg: error?.message ?? 'Unknown reason'
+		};
+	}
+}
+
+export function dateIsValid(month: string, day: string) {
+	const thisYear = dayjs().year();
+
+	return dayjs(`${thisYear}-${month}-${day}`, 'YYYY-MM-DD').isValid();
 }

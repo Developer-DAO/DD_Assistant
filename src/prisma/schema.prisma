@@ -26,6 +26,14 @@ model ChannelScan {
     categories Category[]
 }
 
+model Birthday {
+    userId   String @id @map("_id")
+    date     String
+    month    String
+    day      String
+    timezone String
+}
+
 model Mentorship {
     discordId         String   @id @map("_id")
     adminRole         String[] @default([])
@@ -76,9 +84,16 @@ model Record {
 model HashNodeSub {
     id               String @id @default(auto()) @map("_id") @db.ObjectId
     discordId        String
-    pubDomain        String
     hashNodeUserName String
     latestCuid       String @default("")
+}
+
+model Contact {
+    id              String @id @map("_id")
+    discordId       String
+    title           String
+    description     String
+    socialMediaLink String @default("")
 }
 
 type ChannelSetting {
@@ -90,6 +105,7 @@ type ChannelSetting {
     celebrateChannel           String   @default("")
     onboardNotificationChannel String   @default("")
     hashNodeSubChannel         String   @default("")
+    birthdayChannel            String   @default("")
     archiveCategoryChannels    String[] @default([])
 }
 

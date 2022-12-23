@@ -11,6 +11,7 @@ import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { GuildInform } from '../types/Cache';
+import { CommandNameEmun } from '../types/Command';
 import {
 	ChannelOptionName,
 	channelOptionNameToDBPropery,
@@ -25,7 +26,7 @@ import {
 } from '../utils/util';
 
 export default new Command({
-	name: 'guild',
+	name: CommandNameEmun.Guild,
 	description: 'Guild Configuration',
 	type: ApplicationCommandType.ChatInput,
 	options: [
@@ -100,6 +101,13 @@ export default new Command({
 							name: ChannelOptionName.HashNodeSubscription,
 							description:
 								'Set a HashNode Subscription Channel, to which the bot will send new blogs',
+							channelTypes: [ChannelType.GuildText]
+						},
+						{
+							type: ApplicationCommandOptionType.Channel,
+							name: ChannelOptionName.Birthday,
+							description:
+								'Set a Birthday Channel, to which the bot will send celebration information',
 							channelTypes: [ChannelType.GuildText]
 						}
 					]

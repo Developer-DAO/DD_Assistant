@@ -15,3 +15,9 @@ export enum CallType {
 	ONBOARDING,
 	WOMENVIBES
 }
+
+export interface GetNextBirthday {
+	errorFlag: boolean;
+	errorMsg?: string;
+	birthday?: number;
+}

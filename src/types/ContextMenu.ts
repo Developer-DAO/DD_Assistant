@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import {
 	ApplicationCommandType,
 	GuildMember,
@@ -29,7 +30,11 @@ interface UserContextMenuCommandRunOption {
 type MessageContextMenuRunFunction = (options: MessageContextMenuCommandRunOption) => any;
 type UserContextMenuRunFunction = (options: UserContextMenuCommandRunOption) => any;
 
-export type ContextMenuNameEnum = 'Grab Onboarding Call' | 'Grab Vibes Call';
+export enum ContextMenuNameEnum {
+	GrabOnboardingCall = 'Grab Onboarding Call',
+	GrabVibesCall = 'Grab Vibes Call'
+}
+
 export type UserContextMenuType = {
 	userPermissions?: PermissionResolvable[];
 	execute: UserContextMenuRunFunction;
@@ -41,5 +46,5 @@ export type MessageContextMenuType = {
 	userPermissions?: PermissionResolvable[];
 	execute: MessageContextMenuRunFunction;
 	name: ContextMenuNameEnum;
-	type: ApplicationCommandType.Message
+	type: ApplicationCommandType.Message;
 } & MessageApplicationCommandData;

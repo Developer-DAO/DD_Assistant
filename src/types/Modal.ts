@@ -12,7 +12,7 @@ interface ModalRunOptions {
 }
 
 type RunFunction = (options: ModalRunOptions) => any;
-type ModalCustomId = 'update';
+type ModalCustomId = 'contact';
 
 export interface ModalType {
 	customId: ModalCustomId;

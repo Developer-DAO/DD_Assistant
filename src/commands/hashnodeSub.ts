@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, TextChannel } from 'discord.js';
 
-import { getUser } from '../graph/GetUser.query';
+import { getPosts } from '../graph/GetUser.query';
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { CommandNameEmun } from '../types/Command';
 import { checkChannelPermission, fetchCommandId } from '../utils/util';
 
 export default new Command({
-	name: 'hashnode_sub',
+	name: CommandNameEmun.Hashnode_sub,
 	description: 'Subscribe a user in the hashnode and get notification in subscribe channel.',
 	type: ApplicationCommandType.ChatInput,
 	options: [
@@ -24,7 +25,7 @@ export default new Command({
 		const hashNodeSubChannelId = myCache.myGet('Guild')[guildId]?.channels?.hashNodeSubChannel;
 
 		if (!hashNodeSubChannelId) {
-			const guildCommandId = fetchCommandId('guild', guild);
+			const guildCommandId = fetchCommandId(CommandNameEmun.Guild, guild);
 
 			return interaction.reply({
 				content: `Please use </guild set channel:${guildCommandId}> to set up a subscribe channel.`,
@@ -55,7 +56,7 @@ export default new Command({
 			});
 		}
 
-		const { result, error } = await getUser({
+		const { result, error } = await getPosts({
 			username: hashNodeUserName
 		});
 
@@ -64,19 +65,20 @@ export default new Command({
 				content: `GraphQL error: \`${error}\``
 			});
 		}
-		const pubDomain = result?.user?.publicationDomain;
+		const pubDomain = result.user.publicationDomain;
+		const blogHandle = result.user.blogHandle;
 
-		if (!pubDomain) {
+		if (!pubDomain && !blogHandle) {
 			return interaction.followUp({
-				content: 'Please check your input, I cannot find this user in the HashNode.'
+				content:
+					"Please check your input, I cannot find this user in the HashNode. A valid user name is the words after '@', like: `https://hashnode.com/@Alex1237`."
 			});
 		}
 
 		const createResult = await prisma.hashNodeSub.create({
 			data: {
 				discordId: guildId,
-				hashNodeUserName: hashNodeUserName,
-				pubDomain: pubDomain
+				hashNodeUserName,
 			},
 			select: {
 				id: true
@@ -87,8 +89,8 @@ export default new Command({
 			...myCache.myGet('HashNodeSub'),
 			[hashNodeUserName]: {
 				latestCuid: '',
-				pubDomain: pubDomain,
-				id: createResult.id
+				id: createResult.id,
+				hashNodeUserName
 			}
 		});
 

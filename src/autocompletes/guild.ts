@@ -1,10 +1,11 @@
 import { Auto } from '../structures/AutoComplete';
 import { myCache } from '../structures/Cache';
 import { GuildInform } from '../types/Cache';
+import { CommandNameEmun } from '../types/Command';
 import { NUMBER } from '../utils/const';
 
 export default new Auto({
-	correspondingCommandName: 'guild',
+	correspondingCommandName: CommandNameEmun.Guild,
 	execute: ({ interaction }) => {
 		const guildId = interaction.guild.id;
 		const { name, value } = interaction.options.getFocused(true);

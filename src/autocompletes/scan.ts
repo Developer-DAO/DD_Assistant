@@ -3,10 +3,11 @@ import _ from 'lodash';
 
 import { Auto } from '../structures/AutoComplete';
 import { myCache } from '../structures/Cache';
+import { CommandNameEmun } from '../types/Command';
 import { NUMBER } from '../utils/const';
 
 export default new Auto({
-	correspondingCommandName: 'scan',
+	correspondingCommandName: CommandNameEmun.Scan,
 	execute: ({ interaction }) => {
 		const { name: inputName, value: inputValue } = interaction.options.getFocused(true);
 		const scanResult = myCache.myGet('ChannelScan')[interaction.guild.id];

@@ -17,6 +17,7 @@ import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { ButtonCollectorCustomId } from '../types/Button';
 import { ChannelScanCache } from '../types/Cache';
+import { CommandNameEmun } from '../types/Command';
 import { awaitWrapSendRequestReturnValue } from '../types/Util';
 import { NUMBER } from '../utils/const';
 import {
@@ -33,7 +34,7 @@ import {
 } from '../utils/util';
 
 export default new Command({
-	name: 'scan',
+	name: CommandNameEmun.Scan,
 	description: 'Channel Management',
 	type: ApplicationCommandType.ChatInput,
 	options: [

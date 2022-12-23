@@ -6,6 +6,7 @@ export interface CacheType {
 	Guild: GuildCache;
 	ChannelScan: ChannelScanCache;
 	HashNodeSub: HashNodeSubCache;
+	ContactModalCache: ModalCache;
 }
 export interface MemberVoiceInform {
 	[memberId: string]: {
@@ -30,7 +31,11 @@ export interface GuildChannelScan {
 	};
 }
 
-export type HashNodeSubInform = Pick<HashNodeSub, 'pubDomain' | 'latestCuid' | 'id'>;
+export interface ModalInform {
+	id: string;
+}
+
+export type HashNodeSubInform = Pick<HashNodeSub, 'latestCuid' | 'id' | 'hashNodeUserName'>;
 
 type GuildCache = Record<string, GuildInform>;
 export type ChannelScanCache = Record<string, GuildChannelScan>;
@@ -39,5 +44,6 @@ export type ChannelInformCache = Record<string, PartialChannelInform>;
 export type GuildInform = Omit<Guilds, 'discordId'>;
 export type VoiceContextCache = Record<string, VoiceContextInform>;
 export type HashNodeSubCache = Record<string, HashNodeSubInform>;
+export type ModalCache = Record<string, ModalInform>;
 
 export const MYNULL = '';

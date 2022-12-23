@@ -1,3 +1,4 @@
+import { Birthday } from '@prisma/client';
 import AsciiTable from 'ascii-table';
 import {
 	ChatInputApplicationCommandData,
@@ -13,7 +14,7 @@ import {
 import glob from 'glob';
 import { promisify } from 'util';
 
-import { getPosts } from '../graph/GetPosts.query';
+import { getPosts } from '../graph/GetUser.query';
 import { prisma } from '../prisma/prisma';
 import { AutoType } from '../types/Auto';
 import { ButtonType } from '../types/Button';
@@ -27,6 +28,7 @@ import {
 	defaultChannelScanResult,
 	defaultGuildInform,
 	defaultVoiceContext,
+	LINK,
 	NUMBER
 } from '../utils/const';
 import { logger } from '../utils/logger';
@@ -34,7 +36,8 @@ import {
 	autoArchive,
 	checkChannelPermission,
 	checkStickyAndInit,
-	deSerializeChannelScan
+	deSerializeChannelScan,
+	getNextBirthday
 } from '../utils/util';
 import { myCache } from './Cache';
 import { Event } from './Event';
@@ -155,13 +158,14 @@ export class MyClient extends Client {
 			await this._loadSticky();
 			setInterval(async () => {
 				try {
-					await prisma.guilds.findFirst();
+					await prisma.$connect()
 				} catch (error) {
 					console.log(error);
 				}
-			}, 30 * 1000);
+			}, 60 * 1000);
 			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
 			setInterval(this._fetchHashNodePost, NUMBER.AUTO_POST_SCAN_INTERVAL, this);
+			setInterval(this._birthdayScan, NUMBER.BIRTHDAY_SCAN_INTERVAL, this);
 			if (process.env.MODE === 'dev') {
 				await this._registerCommands({
 					guildId: process.env.GUILDID,
@@ -250,14 +254,17 @@ export class MyClient extends Client {
 			const hashNodeCache: HashNodeSubCache = hashNodeData.reduce((pre, cur) => {
 				pre[cur.hashNodeUserName] = {
 					latestCuid: cur.latestCuid,
-					pubDomain: cur.pubDomain,
-					id: cur.id
+					id: cur.id,
+					hashNodeUserName: cur.hashNodeUserName
 				};
 				return pre;
 			}, {});
 
 			myCache.mySet('HashNodeSub', hashNodeCache);
 			this.table.addRow('HashNodeSub', '✅ Fetched and cached');
+
+			myCache.mySet('ContactModalCache', {});
+			this.table.addRow('Contact', '✅ Fetched and cached');
 
 			logger.info(`\n${this.table.toString()}`);
 		} catch (error) {
@@ -309,10 +316,10 @@ export class MyClient extends Client {
 	}
 
 	private async _fetchHashNodePost(client: MyClient) {
-		console.log(1);
+		console.log(1)
+		if (!myCache.myHas('HashNodeSub')) return;
 		const cache = myCache.myGet('HashNodeSub');
 
-		console.log(cache);
 		const guildId = process.env.GUILDID;
 		const hashNodeSubChannelId = myCache.myGet('Guild')[guildId].channels.hashNodeSubChannel;
 
@@ -328,50 +335,52 @@ export class MyClient extends Client {
 		if (permissionChecking) return;
 		const embeds: Array<EmbedBuilder> = [];
 
-		console.log(2);
-		for (const userName of Object.keys(cache)) {
+		for (const { hashNodeUserName, latestCuid, id } of Object.values(cache)) {
 			const { result, error } = await getPosts({
-				username: userName
+				username: hashNodeUserName
 			});
 
 			if (error) continue;
+			if (result.user.publication.posts.length === 0) return;
 			const dateDescPosts = result.user.publication.posts.sort(
 				(a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
 			);
-
-			if (dateDescPosts.length === 0) continue;
 			const [latestPost] = dateDescPosts;
 
-			if (latestPost.cuid !== cache[userName].latestCuid) {
+			if (latestPost.cuid !== latestCuid) {
+				let prefix = `${result.user.blogHandle}.hashnode.dev`;
+
+				if (result.user.publicationDomain) {
+					prefix = result.user.publicationDomain;
+				}
 				const embed = new EmbedBuilder()
 					.setTitle(latestPost.title)
-					.setAuthor({ name: result.user.name, iconURL: result.user.photo })
+					.setAuthor({ name: hashNodeUserName, iconURL: result.user.photo })
 					.setDescription(latestPost.brief)
 					.setColor('#3366FF')
-					.setURL(
-						`https://${result.user.publicationDomain}/${latestPost.slug}-${latestPost.cuid}`
-					)
+					.setURL(`https://${prefix}/${latestPost.slug}-${latestPost.cuid}`)
 					.setFooter({
-						text: `${result.user.name} on Hashnode`
+						text: `${hashNodeUserName} on Hashnode`
 					});
 
 				if (latestPost.coverImage) {
 					embed.setImage(latestPost.coverImage);
 				}
 				embeds.push(embed);
+
 				await prisma.hashNodeSub.update({
 					where: {
-						id: cache[userName].id
+						id
 					},
 					data: {
 						latestCuid: latestPost.cuid
 					}
 				});
-				cache[userName].latestCuid = latestPost.cuid;
+				cache[hashNodeUserName].latestCuid = latestPost.cuid;
 			}
 		}
-		myCache.mySet('HashNodeSub', cache);
 		if (embeds.length === 0) return;
+		myCache.mySet('HashNodeSub', cache);
 		let counter = 0;
 
 		while (true) {
@@ -382,5 +391,78 @@ export class MyClient extends Client {
 			counter += NUMBER.EMBED_PER_MSG;
 		}
 		return;
+	}
+
+	private async _birthdayScan(client: MyClient) {
+		if (!myCache.myHas('Guild')) return;
+		const guildId = process.env.GUILDID;
+		const guild = client.guilds.cache.get(guildId);
+
+		if (!guild) return;
+		const birthdayChannelId = myCache.myGet('Guild')[guildId]?.channels?.birthdayChannel;
+
+		if (!birthdayChannelId) return;
+		const birthdayChannel = guild.channels.cache.get(birthdayChannelId) as TextChannel;
+
+		if (!birthdayChannel) return;
+
+		const birthdays = await prisma.birthday.findMany();
+		const current = Math.floor(new Date().getTime() / 1000);
+		const nonBirthdayArray: Array<string> = [];
+		const toBeUpdatedBirthdayInform: Array<Pick<Birthday, 'date' | 'userId'>> = [];
+
+		const todaysBirthday: Array<Birthday> = birthdays
+			.sort((a, b) => Number(a.date) - Number(b.date))
+			.reduce((pre, cur) => {
+				const { month, timezone, day, userId } = cur;
+				const date = Number(cur.date);
+
+				if (current > date) {
+					pre.push(cur);
+					const result = getNextBirthday(month, day, timezone);
+
+					toBeUpdatedBirthdayInform.push({
+						date: result.birthday.toString(),
+						userId
+					});
+				} else {
+					nonBirthdayArray.push(userId);
+				}
+				return pre;
+			}, []);
+
+		if (todaysBirthday.length === 0) return;
+
+		let birthdayContent = todaysBirthday.reduce((pre, cur) => {
+			const tmp = pre + `<@${cur.userId}>`;
+
+			return tmp;
+		}, '');
+
+		birthdayContent += ', today is your birthday! Enjoy your day!';
+
+		const embed = new EmbedBuilder().setTitle('Happy Birthday!🥳').setImage(LINK.BIRTHDAY_PIC);
+
+		if (nonBirthdayArray.length !== 0) {
+			embed.setDescription(`Next superstar is <@${nonBirthdayArray[0]}>!`);
+		} else {
+			embed.setDescription(`Next superstar is <@${todaysBirthday[0].userId}>!`);
+		}
+
+		for (const { userId, date } of toBeUpdatedBirthdayInform) {
+			await prisma.birthday.update({
+				where: {
+					userId
+				},
+				data: {
+					date
+				}
+			});
+		}
+
+		await birthdayChannel.send({
+			content: birthdayContent,
+			embeds: [embed]
+		});
 	}
 }

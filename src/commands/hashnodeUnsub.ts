@@ -3,9 +3,10 @@ import { ApplicationCommandOptionType, ApplicationCommandType } from 'discord.js
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { CommandNameEmun } from '../types/Command';
 
 export default new Command({
-	name: 'hashnode_unsub',
+	name: CommandNameEmun.Hashnode_unsub,
 	description: 'Unsubscribe a user of HashNode.',
 	type: ApplicationCommandType.ChatInput,
 	options: [
@@ -23,7 +24,7 @@ export default new Command({
 
 		if (!cache[username]) {
 			return interaction.reply({
-				content: `Sorry, \`${username}\` does not exist.`,
+				content: `Sorry, \`${username}\` does not exist in the database.`,
 				ephemeral: true
 			});
 		}

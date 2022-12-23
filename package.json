@@ -17,12 +17,13 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"@prisma/client": "^4.5.0",
+		"@prisma/client": "^4.8.0",
 		"@types/glob": "^8.0.0",
 		"@types/lodash": "^4.14.186",
 		"@types/sprintf-js": "^1.1.2",
 		"@typescript-eslint/parser": "^5.39.0",
 		"ascii-table": "^0.0.9",
+		"dayjs": "^1.11.7",
 		"discord-api-types": "^0.37.12",
 		"discord.js": "^14.5.0",
 		"dotenv": "^16.0.3",
@@ -38,8 +39,9 @@
 		"pino-pretty": "^9.1.1",
 		"prettier": "^2.7.1",
 		"prettier-plugin-prisma": "^4.4.0",
-		"prisma": "^4.5.0",
-		"sprintf-js": "^1.1.2"
+		"prisma": "^4.8.0",
+		"sprintf-js": "^1.1.2",
+		"timezones.json": "^1.6.1"
 	},
 	"devDependencies": {
 		"@graphql-codegen/cli": "^2.14.1",

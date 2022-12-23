@@ -1,9 +1,10 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, Role } from 'discord.js';
 
 import { Command } from '../structures/Command';
+import { CommandNameEmun } from '../types/Command';
 
 export default new Command({
-	name: 'collect',
+	name: CommandNameEmun.Collect,
 	description: 'Collect DAO internal data',
 	type: ApplicationCommandType.ChatInput,
 	options: [

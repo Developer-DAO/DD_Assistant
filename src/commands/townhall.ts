@@ -13,11 +13,12 @@ import { sprintf } from 'sprintf-js';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { MemberVoiceInform } from '../types/Cache';
+import { CommandNameEmun } from '../types/Command';
 import { LINK } from '../utils/const';
 import { checkVoiceChannelPermission, getCurrentTimeMin } from '../utils/util';
 
 export default new Command({
-	name: 'townhall',
+	name: CommandNameEmun.Townhall,
 	description: 'Help to record town hall',
 	type: ApplicationCommandType.ChatInput,
 	options: [

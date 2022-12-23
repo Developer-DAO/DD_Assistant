@@ -7,6 +7,7 @@ import {
 	ButtonStyle,
 	MessageReplyOptions
 } from 'discord.js';
+import list from 'timezones.json';
 
 import { ButtonCollectorCustomId } from '../types/Button';
 import {
@@ -29,7 +30,8 @@ type NumericalProperty =
 	| 'ARCHIVE_EXPIRY_TIME'
 	| 'AUTO_ARCHIVE_INTERVL'
 	| 'EMBED_PER_MSG'
-	| 'AUTO_POST_SCAN_INTERVAL';
+	| 'AUTO_POST_SCAN_INTERVAL'
+	| 'BIRTHDAY_SCAN_INTERVAL';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -51,7 +53,7 @@ type CommandContentPropery =
 	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
 	| 'DISCORD_MSG'
 	| 'NOTIFICATION_MSG';
-type LinkProperty = 'DISCORD_MSG' | 'HASHNODE_API';
+type LinkProperty = 'DISCORD_MSG' | 'HASHNODE_API' | 'BIRTHDAY_PIC';
 
 type Numerical = Readonly<Record<NumericalProperty, number>>;
 type InternalError = Readonly<Record<ErroProperty, string>>;
@@ -77,9 +79,10 @@ export const NUMBER: Numerical = {
 	SCAN_VIEW_DURATION: 2 * 60 * 1000,
 	ARCHIVE_CHANNEL_CHILD_LIMIT: 30,
 	ARCHIVE_EXPIRY_TIME: 72 * 36000,
-	AUTO_ARCHIVE_INTERVL: 60 * 60 * 1000,
+	AUTO_ARCHIVE_INTERVL: 120 * 60 * 1000,
 	EMBED_PER_MSG: 10,
-	AUTO_POST_SCAN_INTERVAL: 15 * 1000
+	AUTO_POST_SCAN_INTERVAL: 90 * 60 * 1000,
+	BIRTHDAY_SCAN_INTERVAL: 60 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -95,7 +98,9 @@ export const ERROR_REPLY: InternalError = {
 
 export const LINK: LINK = {
 	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
-	HASHNODE_API: 'https://api.hashnode.com/'
+	HASHNODE_API: 'https://api.hashnode.com/',
+	BIRTHDAY_PIC:
+		'https://cdn.discordapp.com/attachments/1055685228443750410/1055688407411601518/birthday-cake-with-happy-birthday-banner-royalty-free-image-1656616811.png'
 };
 
 export const ButtonCollectorCustomIdRecord: Readonly<Record<ButtonCollectorCustomId, string>> = {
@@ -120,6 +125,7 @@ export const defaultGuildInform: GuildInform = {
 		womenVibesChannel: MYNULL,
 		celebrateChannel: MYNULL,
 		hashNodeSubChannel: MYNULL,
+		birthdayChannel: MYNULL,
 		archiveCategoryChannels: []
 	},
 	switch: {
@@ -150,7 +156,8 @@ export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	ChannelScan: 'ChannelScan',
 	Guild: 'Guild',
 	VoiceContext: 'VoiceContext',
-	HashNodeSub: 'HashNodeSub'
+	HashNodeSub: 'HashNodeSub',
+	ContactModalCache: 'ContactModalCache'
 };
 export enum ChannelOptionName {
 	Celebration = 'celebration',
@@ -161,7 +168,8 @@ export enum ChannelOptionName {
 	WomenVibe = 'women_vibe',
 	OnboardingNotification = 'onboarding_notification',
 	Archive = 'archive',
-	HashNodeSubscription = 'hashnode'
+	HashNodeSubscription = 'hashnode',
+	Birthday = 'birthday'
 }
 export const channelOptionNameToDBPropery: Readonly<
 	Record<ChannelOptionName, keyof ChannelSetting>
@@ -174,7 +182,8 @@ export const channelOptionNameToDBPropery: Readonly<
 	women_vibe: 'womenVibesChannel',
 	onboarding_notification: 'onboardNotificationChannel',
 	archive: 'archiveCategoryChannels',
-	hashnode: 'hashNodeSubChannel'
+	hashnode: 'hashNodeSubChannel',
+	birthday: 'birthdayChannel'
 };
 
 interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandOptionChoiceData {
@@ -231,11 +240,6 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 				.setLabel('Open an Intro Thread')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
-			// new ButtonBuilder()
-			// 	.setCustomId('instruction')
-			// 	.setLabel('DAO Instruction')
-			// 	.setEmoji('📚')
-			// 	.setStyle(ButtonStyle.Success)
 		])
 	]
 };
@@ -254,31 +258,84 @@ export const WOMENSTICKYMSG: Readonly<MessageReplyOptions> = {
 				.setLabel('Open an Intro Thread')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
-			// new ButtonBuilder()
-			// 	.setCustomId('instruction')
-			// 	.setLabel('DAO Instruction')
-			// 	.setEmoji('📚')
-			// 	.setStyle(ButtonStyle.Success)
 		])
 	]
 };
 
+export const TIMEZONELIST: Array<string> = list.reduce((pre, cur) => {
+	pre.push(...cur.utc);
+	return pre;
+}, []);
+
+export const EMPTYSTRING = 'NULL';
+
+export const MONTH_ENUM: Array<ApplicationCommandOptionChoiceData<string>> = [
+	{
+		name: 'January',
+		value: '1'
+	},
+	{
+		name: 'February',
+		value: '2'
+	},
+	{
+		name: 'March',
+		value: '3'
+	},
+	{
+		name: 'April',
+		value: '4'
+	},
+	{
+		name: 'May',
+		value: '5'
+	},
+	{
+		name: 'June',
+		value: '6'
+	},
+	{
+		name: 'July',
+		value: '7'
+	},
+	{
+		name: 'August',
+		value: '8'
+	},
+	{
+		name: 'September',
+		value: '9'
+	},
+	{
+		name: 'October',
+		value: '10'
+	},
+	{
+		name: 'November',
+		value: '11'
+	},
+	{
+		name: 'December',
+		value: '12'
+	}
+];
+
 export const COMMAND_CHOICES: Array<ExtendedApplicationCommandOptionChoiceData> = [
 	{
-		name: 'devdao',
-		value: 'devdao'
+		name: CommandNameEmun.Devdao,
+		value: CommandNameEmun.Devdao
 	},
 	{
-		name: 'guild',
-		value: 'guild'
+		name: CommandNameEmun.Guild,
+		value: CommandNameEmun.Guild
 	},
 	{
-		name: 'townhall',
-		value: 'townhall'
+		name: CommandNameEmun.Townhall,
+		value: CommandNameEmun.Townhall
 	},
 	{
-		name: 'mentorship',
-		value: 'mentorship'
+		name: CommandNameEmun.Mentorship,
+		value: CommandNameEmun.Mentorship
 	}
 ];
 

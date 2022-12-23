@@ -1,11 +1,12 @@
 import { ApplicationCommandType } from 'discord.js';
 
 import { MessageContextMenu } from '../structures/ContextMenu';
+import { ContextMenuNameEnum } from '../types/ContextMenu';
 import { CallType } from '../types/Util';
 import { fetchCallSchedule, searchEvent } from '../utils/util';
 
 export default new MessageContextMenu({
-	name: 'Grab Onboarding Call',
+	name: ContextMenuNameEnum.GrabOnboardingCall,
 	type: ApplicationCommandType.Message,
 	execute: async ({ interaction }) => {
 		const { targetMessage, guildId } = interaction;

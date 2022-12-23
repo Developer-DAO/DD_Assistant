@@ -608,16 +608,9 @@ export type GraphQL_IsRepublished = {
   originalArticleURL: Scalars['String'];
 };
 
-export type GraphQL_GetPostsQueryVariables = Exact<{
+export type GraphQL_UserQueryVariables = Exact<{
   username: Scalars['String'];
 }>;
 
 
-export type GraphQL_GetPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', name?: string | null, photo?: string | null, publicationDomain?: string | null, publication?: { __typename?: 'Publication', posts?: Array<{ __typename?: 'Post', dateAdded?: string | null, cuid?: string | null, title?: string | null, brief?: string | null, coverImage: string, slug?: string | null } | null> | null } | null } | null };
-
-export type GraphQL_GetUserQueryVariables = Exact<{
-  username: Scalars['String'];
-}>;
-
-
-export type GraphQL_GetUserQuery = { __typename?: 'Query', user?: { __typename?: 'User', publicationDomain?: string | null } | null };
+export type GraphQL_UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', photo?: string | null, blogHandle?: string | null, publicationDomain?: string | null, publication?: { __typename?: 'Publication', posts?: Array<{ __typename?: 'Post', dateAdded?: string | null, cuid?: string | null, title?: string | null, brief?: string | null, coverImage: string, slug?: string | null } | null> | null } | null } | null };

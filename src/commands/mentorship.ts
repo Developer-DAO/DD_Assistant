@@ -1,9 +1,10 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ChannelType } from 'discord.js';
 
 import { Command } from '../structures/Command';
+import { CommandNameEmun } from '../types/Command';
 
 export default new Command({
-	name: 'mentorship',
+	name: CommandNameEmun.Mentorship,
 	description: 'Mentorship helper',
 	type: ApplicationCommandType.ChatInput,
 	options: [
@@ -133,7 +134,7 @@ export default new Command({
 		const subCommandGroupName = args.getSubcommandGroup();
 		const subCommandName = args.getSubcommand();
 
-		console.log(subCommandGroupName);
+		console.log(subCommandGroupName, subCommandName);
 		return interaction.reply({
 			content: 'WIP'
 		});
