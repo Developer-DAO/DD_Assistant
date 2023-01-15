@@ -136,7 +136,8 @@ export default new Command({
 
 		console.log(subCommandGroupName, subCommandName);
 		return interaction.reply({
-			content: 'WIP'
+			content: 'WIP',
+			ephemeral: true
 		});
 	}
 });
