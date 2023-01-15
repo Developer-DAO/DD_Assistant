@@ -265,7 +265,6 @@ export class MyClient extends Client {
 
 			myCache.mySet('ContactModalCache', {});
 			this.table.addRow('Contact', '✅ Fetched and cached');
-
 			logger.info(`\n${this.table.toString()}`);
 		} catch (error) {
 			// todo handle errors correctly
