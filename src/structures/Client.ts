@@ -316,7 +316,6 @@ export class MyClient extends Client {
 	}
 
 	private async _fetchHashNodePost(client: MyClient) {
-		console.log(1)
 		if (!myCache.myHas('HashNodeSub')) return;
 		const cache = myCache.myGet('HashNodeSub');
 
