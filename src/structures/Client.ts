@@ -198,7 +198,7 @@ export class MyClient extends Client {
 		myCache.mySet('VoiceContext', voiceContextCache);
 
 		await prisma.$connect();
-		logger.info('Database is connected.');
+		logger.info('Database is connected...');
 		try {
 			const guildInform = await prisma.guilds.findFirst({
 				cursor: {
