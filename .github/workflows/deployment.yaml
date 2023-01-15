@@ -1,0 +1,86 @@
+name: DD Assistant Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '!.github/worksflows/*.yaml'
+      - '!README.md'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  build:
+    name: 'Build the bot'
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    outputs:
+      docker-tag: ${{ steps.out.outputs.docker-tag }}
+
+    steps:
+      - name: Set current date as env variable
+        run: echo "UNIQ_ID=$(date +'%y%m%d')-${GITHUB_RUN_ID}" >> $GITHUB_ENV
+
+      - name: Repo Checkout
+        uses: actions/checkout@v3
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: alex1237/dd-bot
+          tags: |
+            type=ref,event=branch,prefix=${{ env.UNIQ_ID }}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3 # docker build & push
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+      
+      - name: Inject tag to GitHub Output ENV
+        id: out
+        run: echo "docker-tag=${UNIQ_ID}-${{ env.BRANCH_NAME }}" >> $GITHUB_OUTPUT
+
+  push-tags:
+    name: Commit and push docker-tag to CD repo.
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout CD Repo
+        uses: actions/checkout@v3
+        with:
+          repository: myz1237/bot-deployment
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: main
+      
+      - name: Update image tag
+        uses: mikefarah/yq@v4.30.7
+        with:
+          cmd: |
+            yq -i '.image.tag="${{ needs.build.outputs.docker-tag }}"' Charts/ddAssistant/values.yaml
+
+      - name: Push this change
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit -m "build: ${{needs.build.outputs.docker-tag}}"
+          git push
