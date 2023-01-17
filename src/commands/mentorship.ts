@@ -134,7 +134,6 @@ export default new Command({
 		const subCommandGroupName = args.getSubcommandGroup();
 		const subCommandName = args.getSubcommand();
 
-		console.log(subCommandGroupName, subCommandName);
 		return interaction.reply({
 			content: 'WIP',
 			ephemeral: true

@@ -158,9 +158,9 @@ export class MyClient extends Client {
 			await this._loadSticky();
 			setInterval(async () => {
 				try {
-					await prisma.$connect()
+					await prisma.$connect();
 				} catch (error) {
-					console.log(error);
+					logger.error(error);
 				}
 			}, 60 * 1000);
 			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
