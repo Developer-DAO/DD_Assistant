@@ -7,8 +7,8 @@ RUN npm install pm2 -g
 RUN npm install 
 
 COPY ./ ./
-RUN npm run generate
+RUN npm run generate && npm run build
 
 EXPOSE 80
 
-CMD ["pm2-runtime", "start", "dd.config.js"]
+CMD ["pm2-runtime", "start", "./dist/index.js"]
