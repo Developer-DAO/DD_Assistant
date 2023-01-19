@@ -33,7 +33,7 @@ export default new Modal({
 				discordId: interaction.guildId
 			}
 		});
-
+		console.log('Test');
 		return interaction.followUp({
 			content: `You have successfully created this point of contact.`
 		});
