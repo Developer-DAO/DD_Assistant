@@ -1,4 +1,4 @@
-import { ChannelInform, Guilds, HashNodeSub } from '@prisma/client';
+import { ChannelInform, Guilds, HashNodeSub, Mentorship } from '@prisma/client';
 type Maybe<T> = T | null;
 
 export interface CacheType {
@@ -7,6 +7,7 @@ export interface CacheType {
 	ChannelScan: ChannelScanCache;
 	HashNodeSub: HashNodeSubCache;
 	ContactModalCache: ModalCache;
+	MentorshipConfig: MentorshipCache;
 }
 export interface MemberVoiceInform {
 	[memberId: string]: {
@@ -45,5 +46,6 @@ export type GuildInform = Omit<Guilds, 'discordId'>;
 export type VoiceContextCache = Record<string, VoiceContextInform>;
 export type HashNodeSubCache = Record<string, HashNodeSubInform>;
 export type ModalCache = Record<string, ModalInform>;
+export type MentorshipCache = Record<string, Mentorship>;
 
 export const MYNULL = '';

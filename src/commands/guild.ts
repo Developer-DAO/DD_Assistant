@@ -14,7 +14,7 @@ import { GuildInform } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import {
 	ChannelOptionName,
-	channelOptionNameToDBProperty,
+	channelOptionNameAndPrisamPropertyMap,
 	COMMAND_CHOICES,
 	COMMAND_CONTENT
 } from '../utils/const';
@@ -297,7 +297,7 @@ export default new Command({
 							continue;
 						}
 						const preChannelId = myCache.myGet('Guild')[guildId].channels[
-							channelOptionNameToDBProperty[channelOptionName]
+							channelOptionNameAndPrisamPropertyMap[channelOptionName]
 						] as string;
 
 						if (preChannelId && preChannelId !== channelId) {
@@ -316,10 +316,12 @@ export default new Command({
 							targetChannelId: channelId
 						})
 					);
-					if (channelId !== cachedGuildInform.channels[channelOptionName])
-						cachedGuildInform.channels[
-							channelOptionNameToDBProperty[channelOptionName]
-						] = channelId;
+					const PrismaProperty = channelOptionNameAndPrisamPropertyMap[channelOptionName];
+
+					cachedGuildInform.channels[PrismaProperty] =
+						channelId !== cachedGuildInform.channels[PrismaProperty]
+							? channelId
+							: cachedGuildInform.channels[PrismaProperty];
 				}
 				if (successReplyArray.length !== 0) {
 					await prisma.guilds.update({

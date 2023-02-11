@@ -153,12 +153,21 @@ export const defaultVoiceContext: VoiceContextInform = {
 
 export const defaultChannelScanResult: GuildChannelScan = {};
 
+export const defaultMentorshipConfig: Mentorship = {
+	adminRole: process.env.GUILDID,
+	discordId: process.env.GUILDID,
+	mentorChannel: MYNULL,
+	playgroundChannel: MYNULL,
+	tokenPerMin: 0
+};
+
 export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	ChannelScan: 'ChannelScan',
 	Guild: 'Guild',
 	VoiceContext: 'VoiceContext',
 	HashNodeSub: 'HashNodeSub',
-	ContactModalCache: 'ContactModalCache'
+	ContactModalCache: 'ContactModalCache',
+	MentorshipConfig: 'MentorshipConfig'
 };
 export enum ChannelOptionName {
 	Celebration = 'celebration',
@@ -172,7 +181,7 @@ export enum ChannelOptionName {
 	HashNodeSubscription = 'hashnode',
 	Birthday = 'birthday'
 }
-export const channelOptionNameToDBPropery: Readonly<
+export const channelOptionNameAndPrisamPropertyMap: Readonly<
 	Record<ChannelOptionName, keyof ChannelSetting>
 > = {
 	celebration: 'celebrateChannel',
@@ -277,8 +286,7 @@ export const PermissionFlagBitsContent: Partial<Record<keyof PermissionFlags, st
 	ManageChannels: 'Missing **MANAGE CHANNEL** access',
 	CreatePublicThreads: 'Missing **CREATE PUBLIC THREADS** access',
 	SendMessagesInThreads: 'Missing **SEND MESSAGES IN THREAD** access',
-	Connect: 'Missing **CONNECT** access',
-	
+	Connect: 'Missing **CONNECT** access'
 };
 
 export const EMPTYSTRING = 'NULL';

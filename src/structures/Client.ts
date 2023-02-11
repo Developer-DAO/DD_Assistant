@@ -27,6 +27,7 @@ import { CallType } from '../types/Util';
 import {
 	defaultChannelScanResult,
 	defaultGuildInform,
+	defaultMentorshipConfig,
 	defaultVoiceContext,
 	LINK,
 	NUMBER
@@ -245,6 +246,26 @@ export class MyClient extends Client {
 			} else {
 				myCache.mySet('ChannelScan', deSerializeChannelScan(guildChannelScan));
 			}
+
+			const mentorshipConfig = await prisma.mentorship.findFirst({
+				cursor: {
+					discordId: guildId
+				}
+			});
+
+			if (!mentorshipConfig) {
+				await prisma.mentorship.create({
+					data: defaultMentorshipConfig
+				});
+				myCache.mySet('MentorshipConfig', {
+					[guildId]: defaultMentorshipConfig
+				});
+			} else {
+				myCache.mySet('MentorshipConfig', {
+					[guildId]: mentorshipConfig
+				});
+			}
+			this.table.addRow('MentorshipConfig', '✅ Fetched and cached');
 
 			const hashNodeData = await prisma.hashNodeSub.findMany({
 				where: {

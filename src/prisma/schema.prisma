@@ -35,11 +35,11 @@ model Birthday {
 }
 
 model Mentorship {
-    discordId         String   @id @map("_id")
-    adminRole         String[] @default([])
-    mentorChannel     String   @default("")
-    playgroundChannel String   @default("")
-    tokenPerMin       Int      @default(0)
+    discordId         String @id @map("_id")
+    adminRole         String @default("")
+    mentorChannel     String @default("")
+    playgroundChannel String @default("")
+    tokenPerMin       Int    @default(0)
 }
 
 model Mentee {
