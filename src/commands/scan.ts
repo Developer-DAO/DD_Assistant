@@ -25,7 +25,7 @@ import {
 	awaitWrap,
 	awaitWrapSendRequest,
 	checkCategoryPermission,
-	checkChannelPermission,
+	checkTextChannelPermission,
 	embedFieldsFactory,
 	getNotificationMsg,
 	getParentInform,
@@ -523,7 +523,7 @@ export default new Command({
 					if (!channel) {
 						unfetchableChannelNameArray.push(channels.channels[channelId].channelName);
 					} else {
-						const permissionCheckingResult = checkChannelPermission(channel, botId);
+						const permissionCheckingResult = checkTextChannelPermission(channel, botId);
 
 						if (permissionCheckingResult) {
 							failSendMsgChannelIdArray.push(channelId);

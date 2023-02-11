@@ -48,6 +48,7 @@ import {
 	ERROR_REPLY,
 	MONTH,
 	NUMBER,
+	PermissionFlagBitsContent,
 	STICKYMSG,
 	WEEK,
 	WOMENSTICKYMSG
@@ -244,82 +245,60 @@ export function readGuildInform(guildInform: GuildInform, guildId: string): APIE
 	];
 }
 
-export function checkChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
+function _checkChannelPermission(
+	channel: TextChannel | CategoryChannel | VoiceChannel,
+	botId: string,
+	permissionList: Array<keyof typeof PermissionFlagsBits>
+) {
+	const permissionObj = channel.permissionsFor(botId, true);
+
+	for (const permission of permissionList) {
+		if (!permissionObj?.has(permissionList)) {
+			return (
+				PermissionFlagBitsContent[permission] ??
+				`Missing **${permission.toUpperCase()}** access.`
+			);
+		}
 	}
 	return false;
 }
 
-export function checkCategoryPermission(channel: CategoryChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
-		return 'Missing **MANAGE CHANNEL** access';
-	}
-	return false;
+export function checkTextChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'SendMessages']);
 }
 
-export function checkVoiceChannelPermission(channel: VoiceChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	return false;
+export function checkCategoryPermission(channel: CategoryChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'ManageChannels']);
 }
 
-export function checkToBeArchivedChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
-		return 'Missing **MANAGE CHANNELS** access';
-	}
-	return false;
+export function checkVoiceChannelPermission(channel: VoiceChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'SendMessages']);
 }
 
-export function checkIntroductionChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ReadMessageHistory])) {
-		return 'Missing **READ MESSAGE HISTORY** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.CreatePublicThreads])) {
-		return 'Missing **CREATE PUBLIC THREADS** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessagesInThreads])) {
-		return 'Missing **SEND MESSAGES IN THREAD** access';
-	}
-	return false;
+export function checkToBeArchivedChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ManageChannels'
+	]);
 }
 
-export function checkTownHallChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.Connect])) {
-		return 'Missing **CONNECT** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	return false;
+export function checkIntroductionChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ReadMessageHistory',
+		'CreatePublicThreads',
+		'SendMessagesInThreads'
+	]);
+}
+
+export function checkTownHallChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'Connect',
+	]);
 }
 
 export function getNotificationMsg(channelId: string, timestamp: number) {

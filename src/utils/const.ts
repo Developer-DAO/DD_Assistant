@@ -1,11 +1,12 @@
 /* eslint-disable no-unused-vars */
-import { ChannelSetting } from '@prisma/client';
+import { ChannelSetting, Mentorship } from '@prisma/client';
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionChoiceData,
 	ButtonBuilder,
 	ButtonStyle,
-	MessageReplyOptions
+	MessageReplyOptions,
+	PermissionFlags
 } from 'discord.js';
 import list from 'timezones.json';
 
@@ -266,6 +267,19 @@ export const TIMEZONELIST: Array<string> = list.reduce((pre, cur) => {
 	pre.push(...cur.utc);
 	return pre;
 }, []);
+
+export const PermissionFlagBitsContent: Partial<Record<keyof PermissionFlags, string>> = {
+	ViewChannel: 'Missing **VIEW CHANNEL** access.',
+	SendMessages: 'Missing **SEND MESSAGES** access.',
+	EmbedLinks: 'Missing **EMBED LINKS** access.',
+	AttachFiles: 'Missing **ATTACH FILES** access.',
+	ReadMessageHistory: 'Missing **READ MESSAGE HISTORY** access.',
+	ManageChannels: 'Missing **MANAGE CHANNEL** access',
+	CreatePublicThreads: 'Missing **CREATE PUBLIC THREADS** access',
+	SendMessagesInThreads: 'Missing **SEND MESSAGES IN THREAD** access',
+	Connect: 'Missing **CONNECT** access',
+	
+};
 
 export const EMPTYSTRING = 'NULL';
 

@@ -13,7 +13,7 @@ import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { CommandNameEmun } from '../types/Command';
-import { awaitWrap, checkChannelPermission } from '../utils/util';
+import { awaitWrap, checkTextChannelPermission } from '../utils/util';
 
 export default new Command({
 	name: CommandNameEmun.Contact,
@@ -93,7 +93,7 @@ export default new Command({
 				memberName = member.displayName;
 				memberAvatar = member.displayAvatarURL();
 			}
-			const permissionChecking = checkChannelPermission(
+			const permissionChecking = checkTextChannelPermission(
 				channel as TextChannel,
 				guild.members.me.id
 			);

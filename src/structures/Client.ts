@@ -34,8 +34,8 @@ import {
 import { logger } from '../utils/logger';
 import {
 	autoArchive,
-	checkChannelPermission,
 	checkStickyAndInit,
+	checkTextChannelPermission,
 	deSerializeChannelScan,
 	getNextBirthday
 } from '../utils/util';
@@ -328,7 +328,10 @@ export class MyClient extends Client {
 		const hashNodeSubChannel = guild.channels.cache.get(hashNodeSubChannelId) as TextChannel;
 
 		if (!hashNodeSubChannel) return;
-		const permissionChecking = checkChannelPermission(hashNodeSubChannel, guild.members.me.id);
+		const permissionChecking = checkTextChannelPermission(
+			hashNodeSubChannel,
+			guild.members.me.id
+		);
 
 		if (permissionChecking) return;
 		const embeds: Array<EmbedBuilder> = [];

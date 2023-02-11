@@ -14,13 +14,13 @@ import { GuildInform } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import {
 	ChannelOptionName,
-	channelOptionNameToDBPropery,
+	channelOptionNameToDBProperty,
 	COMMAND_CHOICES,
 	COMMAND_CONTENT
 } from '../utils/const';
 import {
-	checkChannelPermission,
 	checkIntroductionChannelPermission,
+	checkTextChannelPermission,
 	readGuildInform,
 	stickyMsgHandler
 } from '../utils/util';
@@ -238,11 +238,12 @@ export default new Command({
 			if (subCommandName === 'channel') {
 				const channelOptions = args.data[0].options[0].options;
 
-				if (channelOptions.length === 0)
+				if (channelOptions.length === 0) {
 					return interaction.reply({
 						content: 'Sorry, you have to choose at least one options.',
 						ephemeral: true
 					});
+				}
 				await interaction.deferReply({ ephemeral: true });
 				const cachedGuildInform = myCache.myGet('Guild')[guildId];
 
@@ -264,7 +265,7 @@ export default new Command({
 						);
 						continue;
 					}
-					const permissionChecking = checkChannelPermission(targetChannel, botId);
+					const permissionChecking = checkTextChannelPermission(targetChannel, botId);
 
 					if (permissionChecking) {
 						failReplyArray.push(
@@ -296,7 +297,7 @@ export default new Command({
 							continue;
 						}
 						const preChannelId = myCache.myGet('Guild')[guildId].channels[
-							channelOptionNameToDBPropery[channelOptionName]
+							channelOptionNameToDBProperty[channelOptionName]
 						] as string;
 
 						if (preChannelId && preChannelId !== channelId) {
@@ -317,7 +318,7 @@ export default new Command({
 					);
 					if (channelId !== cachedGuildInform.channels[channelOptionName])
 						cachedGuildInform.channels[
-							channelOptionNameToDBPropery[channelOptionName]
+							channelOptionNameToDBProperty[channelOptionName]
 						] = channelId;
 				}
 				if (successReplyArray.length !== 0) {
