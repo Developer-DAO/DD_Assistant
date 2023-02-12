@@ -11,6 +11,7 @@ import {
 	ComponentType,
 	EmbedBuilder,
 	GuildMember,
+	InteractionReplyOptions,
 	TextChannel,
 	UserSelectMenuBuilder,
 	UserSelectMenuInteraction
@@ -94,6 +95,41 @@ export default new Command({
 			description: 'Add mentor-mentee pair'
 		},
 		{
+			type: ApplicationCommandOptionType.SubcommandGroup,
+			name: 'fetch',
+			description: 'Fetch mentors or mentees information.',
+			options: [
+				{
+					type: ApplicationCommandOptionType.Subcommand,
+					name: 'mentor',
+					description: 'Fetch mentors information.',
+					options: [
+						{
+							type: ApplicationCommandOptionType.String,
+							name: 'name',
+							description: 'Mentors list.',
+							required: true,
+							autocomplete: true
+						}
+					]
+				},
+				{
+					type: ApplicationCommandOptionType.Subcommand,
+					name: 'mentee',
+					description: 'Fetch mentees information.',
+					options: [
+						{
+							type: ApplicationCommandOptionType.String,
+							name: 'name',
+							description: 'Mentees list.',
+							required: true,
+							autocomplete: true
+						}
+					]
+				}
+			]
+		},
+		{
 			type: ApplicationCommandOptionType.Subcommand,
 			name: 'start_epoch',
 			description: 'Start the next epoch to gather mentorship information.'
@@ -165,7 +201,29 @@ export default new Command({
 			return;
 		}
 
-		if (subCommandGroupName === 'add_pair') {
+		if (subCommandGroupName === 'fetch') {
+			const { guildId } = interaction;
+
+			await interaction.deferReply({ ephemeral: true });
+			try {
+				switch (subCommandName) {
+					case 'mentor':
+						return interaction.followUp(
+							await _fetchMentor(args.getString('name'), guildId)
+						);
+					case 'mentee':
+						return interaction.followUp(
+							await _fetchMentee(args.getString('name'), guildId)
+						);
+				}
+			} catch (e: unknown) {
+				return interaction.followUp({
+					content: 'Failed to upload data to the database, please try again later.'
+				});
+			}
+		}
+
+		if (subCommandName === 'add_pair') {
 			const expireInMilsec = NUMBER.ADD_PAIR_INTERVAL;
 			const expireInSec = Math.floor(expireInMilsec / 1000);
 			const idleInMilsec = 1 * 60 * 1000;
@@ -254,7 +312,7 @@ export default new Command({
 			return;
 		}
 
-		if (subCommandGroupName === 'start_epoch') {
+		if (subCommandName === 'start_epoch') {
 			await interaction.deferReply({
 				ephemeral: true
 			});
@@ -288,7 +346,7 @@ export default new Command({
 			});
 		}
 
-		if (subCommandGroupName === 'collect') {
+		if (subCommandName === 'collect') {
 			if (!myCache.myHas('CurrentEpoch')) {
 				const commandId = fetchCommandId(interaction.commandName, interaction.guild);
 
@@ -297,6 +355,11 @@ export default new Command({
 					ephemeral: true
 				});
 			}
+
+			return interaction.reply({
+				content: 'WIP',
+				ephemeral: true
+			});
 		}
 	}
 });
@@ -511,6 +574,13 @@ async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Erro
 			new Error('Sorry, you have to choose at least one mentee before you confirm this pair.')
 		);
 	}
+
+	if (inform.mentees.map((mentee) => mentee.id).includes(inform.mentor.id)) {
+		return Result.Err(
+			new Error(`Sorry, <@${inform.mentor.id}> cannot be mentor and mentee at the same time.`)
+		);
+	}
+
 	const discordId = process.env.GUILDID;
 	const mentorId = inform.mentor.id;
 	const mentorName = inform.mentor.displayName;
@@ -519,16 +589,16 @@ async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Erro
 			prisma.mentee.upsert({
 				create: {
 					discordId,
-					discordName: mentee.displayName,
-					menteeId: mentee.id,
+					name: mentee.displayName,
+					id: mentee.id,
 					mentorName,
 					mentorId
 				},
 				where: {
-					menteeId: mentee.id
+					id: mentee.id
 				},
 				update: {
-					discordName: mentee.displayName,
+					name: mentee.displayName,
 					mentorName,
 					mentorId
 				}
@@ -549,15 +619,15 @@ async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Erro
 			create: {
 				discordId,
 				menteesRef: inform.mentees.map((mentee) => mentee.id),
-				mentorName,
-				mentorId
+				name: mentorName,
+				id: mentorId
 			},
 			where: {
-				mentorId
+				id: mentorId
 			},
 			update: {
 				menteesRef: inform.mentees.map((mentee) => mentee.id),
-				mentorName
+				name: mentorName
 			}
 		});
 	} catch (error) {
@@ -566,4 +636,64 @@ async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Erro
 			new Error('Sorry, failed to update data.  Please report this to the admin.')
 		);
 	}
+}
+
+async function _fetchMentor(id: string, discordId: string): Promise<InteractionReplyOptions> {
+	const mentor = await prisma.mentor.findFirst({
+		cursor: {
+			id
+		},
+		where: {
+			discordId
+		}
+	});
+
+	return mentor
+		? {
+				embeds: [
+					new EmbedBuilder()
+						.setTitle(`${mentor.name} Information`)
+						.setDescription(
+							`Discord Profile: <@${mentor.id}>\nMentees: ${
+								mentor.menteesRef.length === 0
+									? 0
+									: mentor.menteesRef
+											.map((menteeId) => `<@${menteeId}>`)
+											.toString()
+							}`
+						)
+				]
+		  }
+		: {
+				content:
+					'Sorry, we cannot find this mentor. Please check your input or this mentor is not registered.'
+		  };
+}
+
+async function _fetchMentee(id: string, discordId: string): Promise<InteractionReplyOptions> {
+	const mentee = await prisma.mentee.findFirst({
+		cursor: {
+			id
+		},
+		where: {
+			discordId
+		}
+	});
+
+	return mentee
+		? {
+				embeds: [
+					new EmbedBuilder()
+						.setTitle(`${mentee.name} Information`)
+						.setDescription(
+							`Discord Profile: <@${mentee.id}>\nMentor: ${
+								mentee.mentorId ? `<@${mentee.mentorId}>` : `Unavailable`
+							}`
+						)
+				]
+		  }
+		: {
+				content:
+					'Sorry, we cannot find this mentee. Please check your input or this mentee is not registered.'
+		  };
 }
