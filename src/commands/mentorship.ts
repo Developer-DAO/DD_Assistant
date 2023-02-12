@@ -1,12 +1,19 @@
 import { Mentorship, Prisma } from '@prisma/client';
+import dayjs from 'dayjs';
 import {
+	ActionRowBuilder,
 	APIEmbedField,
 	ApplicationCommandOptionType,
 	ApplicationCommandType,
+	ButtonInteraction,
 	ChannelType,
 	CommandInteractionOptionResolver,
+	ComponentType,
 	EmbedBuilder,
-	TextChannel
+	GuildMember,
+	TextChannel,
+	UserSelectMenuBuilder,
+	UserSelectMenuInteraction
 } from 'discord.js';
 import { sprintf } from 'sprintf-js';
 
@@ -14,8 +21,10 @@ import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { CommandNameEmun, ExtendedCommandInteration } from '../types/Command';
-import { COMMAND_CONTENT } from '../utils/const';
-import { checkTextChannelPermission } from '../utils/util';
+import { Result } from '../types/Result';
+import { COMMAND_CONTENT, NUMBER } from '../utils/const';
+import { logger } from '../utils/logger';
+import { checkTextChannelPermission, fetchCommandId } from '../utils/util';
 
 export default new Command({
 	name: CommandNameEmun.Mentorship,
@@ -82,21 +91,7 @@ export default new Command({
 		{
 			type: ApplicationCommandOptionType.Subcommand,
 			name: 'add_pair',
-			description: 'Add mentor-mentee pair',
-			options: [
-				{
-					name: 'mentor',
-					description: 'Choose the mentor',
-					type: ApplicationCommandOptionType.User,
-					required: true
-				},
-				{
-					name: 'mentee',
-					description: 'Choose the mentees, mention mentees in this option.',
-					type: ApplicationCommandOptionType.String,
-					required: true
-				}
-			]
+			description: 'Add mentor-mentee pair'
 		},
 		{
 			type: ApplicationCommandOptionType.Subcommand,
@@ -171,15 +166,145 @@ export default new Command({
 		}
 
 		if (subCommandGroupName === 'add_pair') {
+			const expireInMilsec = NUMBER.ADD_PAIR_INTERVAL;
+			const expireInSec = Math.floor(expireInMilsec / 1000);
+			const idleInMilsec = 1 * 60 * 1000;
+			const idleInSec = Math.floor(idleInMilsec / 1000);
+			const replyMsg = await interaction.reply({
+				content: `Please select one mentor and corresponding mentees. After you finish, please click the button to confirm your choice. Please note that this message will expire when idle reaches ${idleInSec} secs or <t:${expireInSec}:R>. Once it expires, you have to run the command again.`,
+				components: [
+					new ActionRowBuilder<UserSelectMenuBuilder>().addComponents([
+						new UserSelectMenuBuilder()
+							.setCustomId('mentor_selection')
+							.setPlaceholder('Please choose one mentor from the list')
+							.setMaxValues(1)
+					]),
+					new ActionRowBuilder<UserSelectMenuBuilder>().addComponents([
+						new UserSelectMenuBuilder()
+							.setCustomId('mentee_selection')
+							.setPlaceholder('Please choose at least one mentee from the list')
+							.setMinValues(1)
+							.setMaxValues(10)
+					])
+				],
+				fetchReply: true,
+				ephemeral: true
+			});
+
+			const collector = replyMsg.createMessageComponentCollector({
+				componentType: ComponentType.UserSelect | ComponentType.Button,
+				time: expireInMilsec,
+				idle: idleInMilsec
+			});
+			const data: MentorshipUserInform = {
+				mentees: []
+			};
+
+			collector.on(
+				'collect',
+				async (collectedInteraction: UserSelectMenuInteraction | ButtonInteraction) => {
+					if (collectedInteraction instanceof UserSelectMenuInteraction) {
+						await collectedInteraction.deferUpdate();
+						const members = [
+							...collectedInteraction.members.values()
+						] as Array<GuildMember>;
+
+						if (collectedInteraction.customId === 'mentor_selection') {
+							data.mentor = members[0];
+						} else {
+							data.mentees = members;
+						}
+					} else {
+						await collectedInteraction.deferUpdate();
+						collector.stop();
+					}
+				}
+			);
+
+			collector.on('end', async (collected) => {
+				if (
+					collected.size === 0 ||
+					!collected.find((value) => value instanceof ButtonInteraction)
+				) {
+					const { commandName, guild } = interaction;
+					const mentorshipCommandId = fetchCommandId(commandName, guild);
+
+					await interaction.editReply({
+						content: `Sorry, time out. Please run </${interaction.commandName} add_pair:${mentorshipCommandId}> again.`,
+						components: []
+					});
+					return;
+				}
+				const result = await _addPair(data);
+
+				if (result.is_err()) {
+					await interaction.editReply({
+						content: result.error.message,
+						components: []
+					});
+				}
+
+				await interaction.editReply({
+					content: `Now <@${data.mentor.id}> pairs with ${data.mentees
+						.map((mentee) => `<@${mentee.id}>`)
+						.toString()}.`,
+					components: []
+				});
+			});
+			return;
 		}
 
 		if (subCommandGroupName === 'start_epoch') {
+			await interaction.deferReply({
+				ephemeral: true
+			});
+			const currentEpoch = await prisma.epoch.findFirst({
+				orderBy: {
+					startTimestamp: 'desc'
+				}
+			});
+
+			if (!currentEpoch) {
+				const epoch = await prisma.epoch.create({
+					data: {
+						startTimestamp: new Date(),
+						endTimestamp: dayjs().add(7, 'day').toDate(),
+						discordId: interaction.guildId
+					}
+				});
+
+				myCache.mySet('CurrentEpoch', epoch);
+				return interaction.followUp({
+					content: `You have started the epoch.\nCurrent Epoch: <t:${Math.floor(
+						epoch.startTimestamp.getTime() / 1000
+					)}:f> to <t:${Math.floor(epoch.endTimestamp.getTime() / 1000)}:f>`
+				});
+			}
+
+			return interaction.followUp({
+				content: `Sorry, epoch has been started.\nCurrent Epoch: <t:${Math.floor(
+					currentEpoch.startTimestamp.getTime() / 1000
+				)}:f> to <t:${Math.floor(currentEpoch.endTimestamp.getTime() / 1000)}:f>`
+			});
 		}
 
 		if (subCommandGroupName === 'collect') {
+			if (!myCache.myHas('CurrentEpoch')) {
+				const commandId = fetchCommandId(interaction.commandName, interaction.guild);
+
+				return interaction.reply({
+					content: `Sorry, epoch is not started. Please use </${interaction.commandName} start_epoch:${commandId}> to launch an epoch.`,
+					ephemeral: true
+				});
+			}
 		}
 	}
 });
+
+interface MentorshipUserInform {
+	mentor?: GuildMember;
+	mentees: Array<GuildMember>;
+}
 
 async function _handleAdminRole(
 	interaction: ExtendedCommandInteration,
@@ -372,4 +497,73 @@ function _readCurrentConfig(interaction: ExtendedCommandInteration) {
 				.addFields(embedFields)
 		]
 	});
+}
+
+async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Error>> {
+	if (!inform.mentor) {
+		return Result.Err(
+			new Error('Sorry, you have to choose one menter before you confirm this pair.')
+		);
+	}
+
+	if (inform.mentees.length === 0) {
+		return Result.Err(
+			new Error('Sorry, you have to choose at least one mentee before you confirm this pair.')
+		);
+	}
+	const discordId = process.env.GUILDID;
+	const mentorId = inform.mentor.id;
+	const mentorName = inform.mentor.displayName;
+	const results = await Promise.allSettled(
+		inform.mentees.map((mentee) =>
+			prisma.mentee.upsert({
+				create: {
+					discordId,
+					discordName: mentee.displayName,
+					menteeId: mentee.id,
+					mentorName,
+					mentorId
+				},
+				where: {
+					menteeId: mentee.id
+				},
+				update: {
+					discordName: mentee.displayName,
+					mentorName,
+					mentorId
+				}
+			})
+		)
+	);
+	const errors = results.filter((value) => value.status === 'rejected');
+
+	if (errors.length !== 0) {
+		logger.error(errors[0]);
+		return Result.Err(
+			new Error('Sorry, failed to update data. Please report this to the admin.')
+		);
+	}
+
+	try {
+		await prisma.mentor.upsert({
+			create: {
+				discordId,
+				menteesRef: inform.mentees.map((mentee) => mentee.id),
+				mentorName,
+				mentorId
+			},
+			where: {
+				mentorId
+			},
+			update: {
+				menteesRef: inform.mentees.map((mentee) => mentee.id),
+				mentorName
+			}
+		});
+	} catch (error) {
+		logger.error(error);
+		return Result.Err(
+			new Error('Sorry, failed to update data.  Please report this to the admin.')
+		);
+	}
 }

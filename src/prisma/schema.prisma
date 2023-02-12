@@ -43,32 +43,36 @@ model Mentorship {
 }
 
 model Mentee {
-    menteeId       String  @id @map("_id")
-    discordId      String
-    discordName    String
-    mentorId       String
-    mentoName      String
-    mentorMentorId String?
+    menteeId    String  @id @map("_id")
+    discordId   String
+    discordName String
+    mentorId    String?
+    mentorName  String?
 }
 
 model Mentor {
     mentorId   String   @id @map("_id")
     discordId  String
-    mentoName  String
+    mentorName String
     menteesRef String[] @default([])
-    rewardsRef String[]
+    rewardsRef String[] @default([])
 }
 
 model Reward {
-    id            String @id @default(auto()) @map("_id") @db.ObjectId
-    epochId       Int
-    confirmedMins Int
+    id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+    confirmedMins       Int
+    currentEpoch        Epoch    @relation(fields: [epochId], references: [id])
+    epochStartTimestamp DateTime
+    epochId             String   @db.ObjectId
+    discordId           String
 }
 
 model Epoch {
-    epochId        Int    @id @map("_id")
-    startTimestamp String
-    endTimestamp   String
+    id             String   @id @default(auto()) @map("_id") @db.ObjectId
+    startTimestamp DateTime
+    endTimestamp   DateTime
+    Reward         Reward[]
+    discordId      String
 }
 
 model Record {
