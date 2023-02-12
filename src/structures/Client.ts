@@ -191,7 +191,7 @@ export class MyClient extends Client {
 
 	private async _cacheInit() {
 		const voiceContextCache: VoiceContextCache = {};
-		const guildId = process.env.GUILDID;
+		const discordId = process.env.GUILDID;
 
 		for (const guildId of this.guilds.cache.keys()) {
 			voiceContextCache[guildId] = defaultVoiceContext;
@@ -203,7 +203,7 @@ export class MyClient extends Client {
 		try {
 			const guildInform = await prisma.guilds.findFirst({
 				cursor: {
-					discordId: guildId
+					discordId
 				}
 			});
 
@@ -211,7 +211,7 @@ export class MyClient extends Client {
 
 			const guildChannelScan = await prisma.channelScan.findFirst({
 				cursor: {
-					discordId: guildId
+					discordId
 				}
 			});
 
@@ -220,16 +220,16 @@ export class MyClient extends Client {
 				await prisma.guilds.create({
 					data: {
 						...defaultGuildInform,
-						discordId: guildId
+						discordId
 					}
 				});
 				myCache.mySet('Guild', {
-					[guildId]: defaultGuildInform
+					[discordId]: defaultGuildInform
 				});
 			} else {
 				delete guildInform.discordId;
 				myCache.mySet('Guild', {
-					[guildId]: guildInform
+					[discordId]: guildInform
 				});
 			}
 
@@ -237,11 +237,11 @@ export class MyClient extends Client {
 				await prisma.channelScan.create({
 					data: {
 						...defaultChannelScanResult,
-						discordId: guildId
+						discordId
 					}
 				});
 				myCache.mySet('ChannelScan', {
-					[guildId]: defaultChannelScanResult
+					[discordId]: defaultChannelScanResult
 				});
 			} else {
 				myCache.mySet('ChannelScan', deSerializeChannelScan(guildChannelScan));
@@ -249,7 +249,7 @@ export class MyClient extends Client {
 
 			const mentorshipConfig = await prisma.mentorship.findFirst({
 				cursor: {
-					discordId: guildId
+					discordId
 				}
 			});
 
@@ -258,18 +258,32 @@ export class MyClient extends Client {
 					data: defaultMentorshipConfig
 				});
 				myCache.mySet('MentorshipConfig', {
-					[guildId]: defaultMentorshipConfig
+					[discordId]: defaultMentorshipConfig
 				});
 			} else {
 				myCache.mySet('MentorshipConfig', {
-					[guildId]: mentorshipConfig
+					[discordId]: mentorshipConfig
 				});
 			}
 			this.table.addRow('MentorshipConfig', '✅ Fetched and cached');
 
+			const currentEpoch = await prisma.epoch.findFirst({
+				orderBy: {
+					startTimestamp: 'desc'
+				},
+				where: {
+					discordId
+				}
+			});
+
+			if (currentEpoch) {
+				myCache.mySet('CurrentEpoch', currentEpoch);
+				this.table.addRow('Epoch', '✅ Fetched and cached');
+			}
+
 			const hashNodeData = await prisma.hashNodeSub.findMany({
 				where: {
-					discordId: guildId
+					discordId: discordId
 				}
 			});
 			const hashNodeCache: HashNodeSubCache = hashNodeData.reduce((pre, cur) => {

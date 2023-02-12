@@ -1,4 +1,4 @@
-import { ChannelInform, Guilds, HashNodeSub, Mentorship } from '@prisma/client';
+import { ChannelInform, Epoch, Guilds, HashNodeSub, Mentorship } from '@prisma/client';
 type Maybe<T> = T | null;
 
 export interface CacheType {
@@ -8,6 +8,7 @@ export interface CacheType {
 	HashNodeSub: HashNodeSubCache;
 	ContactModalCache: ModalCache;
 	MentorshipConfig: MentorshipCache;
+	CurrentEpoch: Epoch
 }
 export interface MemberVoiceInform {
 	[memberId: string]: {
