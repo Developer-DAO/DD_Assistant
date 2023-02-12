@@ -294,11 +294,7 @@ export function checkIntroductionChannelPermission(channel: TextChannel, botId: 
 }
 
 export function checkTownHallChannelPermission(channel: TextChannel, botId: string) {
-	return _checkChannelPermission(channel, botId, [
-		'ViewChannel',
-		'SendMessages',
-		'Connect',
-	]);
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'SendMessages', 'Connect']);
 }
 
 export function getNotificationMsg(channelId: string, timestamp: number) {
@@ -1065,12 +1061,17 @@ export async function checkStickyAndInit(
 }
 
 export function fetchCommandId(commandName: CommandNameEmun | ContextMenuNameEnum, guild: Guild) {
-	if (process.env.MODE === 'dev') {
-		return guild.commands.cache.filter((cmd) => cmd.name === commandName).first().id;
+	if (process.env.mode === 'dev' || process.env.PM2_MODE === 'dev') {
+		return (
+			guild.commands.cache.filter((command) => command.name === commandName)?.first()?.id ??
+			'123456789'
+		);
 	} else {
-		return guild.client.application.commands.cache
-			.filter((cmd) => cmd.name === commandName)
-			.first().id;
+		return (
+			guild.client.application.commands.cache
+				.filter((command) => command.name === commandName)
+				?.first()?.id ?? '123456789'
+		);
 	}
 }
 

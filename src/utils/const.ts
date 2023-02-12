@@ -32,7 +32,8 @@ type NumericalProperty =
 	| 'AUTO_ARCHIVE_INTERVL'
 	| 'EMBED_PER_MSG'
 	| 'AUTO_POST_SCAN_INTERVAL'
-	| 'BIRTHDAY_SCAN_INTERVAL';
+	| 'BIRTHDAY_SCAN_INTERVAL'
+	| 'ADD_PAIR_INTERVAL';
 type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
 type CommandContentPropery =
 	| 'CHANNEL_SETTING_FAIL_REPLY'
@@ -83,7 +84,8 @@ export const NUMBER: Numerical = {
 	AUTO_ARCHIVE_INTERVL: 120 * 60 * 1000,
 	EMBED_PER_MSG: 10,
 	AUTO_POST_SCAN_INTERVAL: 90 * 60 * 1000,
-	BIRTHDAY_SCAN_INTERVAL: 60 * 60 * 1000
+	BIRTHDAY_SCAN_INTERVAL: 60 * 60 * 1000,
+	ADD_PAIR_INTERVAL: 4 * 60 * 1000
 };
 
 export const ERROR_REPLY: InternalError = {
@@ -167,7 +169,8 @@ export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	VoiceContext: 'VoiceContext',
 	HashNodeSub: 'HashNodeSub',
 	ContactModalCache: 'ContactModalCache',
-	MentorshipConfig: 'MentorshipConfig'
+	MentorshipConfig: 'MentorshipConfig',
+	CurrentEpoch: 'CurrentEpoch'
 };
 export enum ChannelOptionName {
 	Celebration = 'celebration',

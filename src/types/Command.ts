@@ -12,6 +12,7 @@ import { MyClient } from '../structures/Client';
 
 export interface ExtendedCommandInteration extends CommandInteraction {
 	member: GuildMember;
+	commandName: CommandNameEmun;
 }
 
 interface CommandRunOptions {
