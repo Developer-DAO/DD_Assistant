@@ -27,7 +27,7 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		guildName: interaction?.guild?.name
 	};
 
-	if (!myCache.myHasAll()) {
+	if (!myCache.myHasesExcept(['CurrentEpoch'])) {
 		if (interaction.isAutocomplete()) {
 			return interaction.respond([]);
 		} else {

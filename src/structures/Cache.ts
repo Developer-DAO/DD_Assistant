@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import NodeCache from 'node-cache';
 
 import { CacheType } from '../types/Cache';
@@ -30,6 +31,10 @@ class MyCache extends NodeCache {
 		return keys.reduce((pre, cur) => {
 			return pre && super.has(cur);
 		}, true);
+	}
+
+	public myHasesExcept<Key extends keyof CacheType>(keys: Array<Key>) {
+		return this.myHases(_.xor(Object.keys(CACHE_KEYS), keys));
 	}
 
 	public myHasAll() {
