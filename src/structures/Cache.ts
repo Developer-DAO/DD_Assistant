@@ -34,7 +34,7 @@ class MyCache extends NodeCache {
 	}
 
 	public myHasesExcept<Key extends keyof CacheType>(keys: Array<Key>) {
-		return this.myHases(_.xor(Object.keys(CACHE_KEYS), keys));
+		return this.myHases(_.xor(Object.keys(CACHE_KEYS), keys) as Array<Key>);
 	}
 
 	public myHasAll() {
