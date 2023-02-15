@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import list from 'timezones.json';
 
-import { ButtonCollectorCustomId } from '../types/Button';
+import { ButtonCollectorCustomId, ButtonCustomIdEnum } from '../types/Button';
 import {
 	CacheType,
 	GuildChannelScan,
@@ -110,10 +110,11 @@ export const ButtonCollectorCustomIdRecord: Readonly<Record<ButtonCollectorCusto
 	first: '',
 	last: '',
 	previous: '',
-	next: ''
+	next: '',
+	pair_confirm: ''
 };
 
-export const defaultGuildInform: GuildInform = {
+export const DefaultGuildInform: GuildInform = {
 	adminCommand: [],
 	adminMember: [],
 	adminRole: [],
@@ -136,7 +137,7 @@ export const defaultGuildInform: GuildInform = {
 	}
 };
 
-export const defaultPartialChannelInform: PartialChannelInform = {
+export const DefaultPartialChannelInform: PartialChannelInform = {
 	channelName: '',
 	lastMsgTimestamp: '0',
 	archiveTimestamp: '0',
@@ -144,7 +145,7 @@ export const defaultPartialChannelInform: PartialChannelInform = {
 	messageId: ''
 };
 
-export const defaultVoiceContext: VoiceContextInform = {
+export const DefaultVoiceContext: VoiceContextInform = {
 	attendees: {},
 	messageLink: null,
 	hostId: null,
@@ -153,13 +154,15 @@ export const defaultVoiceContext: VoiceContextInform = {
 	messageId: null
 };
 
-export const defaultChannelScanResult: GuildChannelScan = {};
+export const DefaultChannelScanResult: GuildChannelScan = {};
 
-export const defaultMentorshipConfig: Mentorship = {
+export const DefaultMentorshipConfig: Mentorship = {
 	adminRole: process.env.GUILDID,
 	discordId: process.env.GUILDID,
 	mentorChannel: MYNULL,
+	menteeChannel: MYNULL,
 	playgroundChannel: MYNULL,
+	playgroundChannelPinnedMsgId: MYNULL,
 	tokenPerMin: 0
 };
 
@@ -244,12 +247,12 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 	components: [
 		new ActionRowBuilder<ButtonBuilder>().addComponents([
 			new ButtonBuilder()
-				.setCustomId('schedule')
+				.setCustomId(ButtonCustomIdEnum.GetSchdule)
 				.setLabel('Onboarding Call Schedule')
 				.setEmoji('📆')
 				.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
-				.setCustomId('talk')
+				.setCustomId(ButtonCustomIdEnum.CreateOnboardingThread)
 				.setLabel('Open an Intro Thread')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
@@ -262,12 +265,12 @@ export const WOMENSTICKYMSG: Readonly<MessageReplyOptions> = {
 	components: [
 		new ActionRowBuilder<ButtonBuilder>().addComponents([
 			new ButtonBuilder()
-				.setCustomId('schedule')
+				.setCustomId(ButtonCustomIdEnum.GetSchdule)
 				.setLabel('D_D Women Schedule')
 				.setEmoji('📆')
 				.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
-				.setCustomId('talk')
+				.setCustomId(ButtonCustomIdEnum.CreateOnboardingThread)
 				.setLabel('Open an Intro Thread')
 				.setEmoji('📢')
 				.setStyle(ButtonStyle.Secondary)
@@ -645,4 +648,10 @@ export enum MONTH {
 	October,
 	November,
 	December
+}
+
+export enum MentorshipChannelOptionName {
+	Playground = 'playground',
+	Mentor = 'mentor',
+	Mentee = 'mentee'
 }

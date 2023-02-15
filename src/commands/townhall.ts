@@ -12,6 +12,7 @@ import { sprintf } from 'sprintf-js';
 
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { ButtonCustomIdEnum } from '../types/Button';
 import { MemberVoiceInform } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import { LINK } from '../utils/const';
@@ -105,12 +106,12 @@ export default new Command({
 				components: [
 					new ActionRowBuilder<ButtonBuilder>().addComponents([
 						new ButtonBuilder()
-							.setCustomId('end')
+							.setCustomId(ButtonCustomIdEnum.EndTownHall)
 							.setLabel('End this event')
 							.setEmoji('⏹️')
 							.setStyle(ButtonStyle.Danger),
 						new ButtonBuilder()
-							.setCustomId('number')
+							.setCustomId(ButtonCustomIdEnum.GetTHAttenderNumber)
 							.setLabel('Participants Number')
 							.setEmoji('🧮')
 							.setStyle(ButtonStyle.Primary)

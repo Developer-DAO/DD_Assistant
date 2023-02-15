@@ -10,6 +10,7 @@ import {
 
 import { myCache } from '../structures/Cache';
 import { Event } from '../structures/Event';
+import { ButtonCustomIdEnum } from '../types/Button';
 import { createChannelHandler, getParentInform } from '../utils/util';
 
 export default new Event('channelCreate', async (newChannel: NonThreadGuildBasedChannel) => {
@@ -44,12 +45,12 @@ export default new Event('channelCreate', async (newChannel: NonThreadGuildBased
 			components: [
 				new ActionRowBuilder<ButtonBuilder>().addComponents([
 					new ButtonBuilder()
-						.setCustomId('send')
+						.setCustomId(ButtonCustomIdEnum.SendNotificationToChannel)
 						.setLabel('Send Notification Message')
 						.setEmoji('📨')
 						.setStyle(ButtonStyle.Primary),
 					new ButtonBuilder()
-						.setCustomId('delete')
+						.setCustomId(ButtonCustomIdEnum.DeleteChannelFromScanResult)
 						.setLabel('Delete this record')
 						.setEmoji('❌')
 						.setStyle(ButtonStyle.Secondary)

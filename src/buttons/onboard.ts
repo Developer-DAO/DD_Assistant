@@ -3,17 +3,18 @@ import { sprintf } from 'sprintf-js';
 
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
+import { ButtonCustomIdEnum } from '../types/Button';
 import { CallType } from '../types/Util';
 import { COMMAND_CONTENT } from '../utils/const';
 import { fetchCallSchedule } from '../utils/util';
 
 export default new Button({
-	customIds: ['schedule', 'talk'],
+	customIds: [ButtonCustomIdEnum.GetSchdule, ButtonCustomIdEnum.CreateOnboardingThread],
 	execute: async ({ interaction }) => {
 		const { guildId } = interaction;
 
 		switch (interaction.customId) {
-			case 'schedule': {
+			case ButtonCustomIdEnum.GetSchdule: {
 				const { introductionChannel, womenIntroductionChannel } =
 					myCache.myGet('Guild')[guildId].channels;
 				let callEmbed: EmbedBuilder;
@@ -34,7 +35,7 @@ export default new Button({
 					ephemeral: true
 				});
 			}
-			case 'talk': {
+			case ButtonCustomIdEnum.CreateOnboardingThread: {
 				await interaction.deferReply({ ephemeral: true });
 				const messages = (
 					await interaction.channel.messages.fetch({

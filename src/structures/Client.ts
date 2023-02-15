@@ -25,10 +25,10 @@ import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMen
 import { ModalType } from '../types/Modal';
 import { CallType } from '../types/Util';
 import {
-	defaultChannelScanResult,
-	defaultGuildInform,
-	defaultMentorshipConfig,
-	defaultVoiceContext,
+	DefaultChannelScanResult,
+	DefaultGuildInform,
+	DefaultMentorshipConfig,
+	DefaultVoiceContext,
 	LINK,
 	NUMBER
 } from '../utils/const';
@@ -194,7 +194,7 @@ export class MyClient extends Client {
 		const discordId = process.env.GUILDID;
 
 		for (const guildId of this.guilds.cache.keys()) {
-			voiceContextCache[guildId] = defaultVoiceContext;
+			voiceContextCache[guildId] = DefaultVoiceContext;
 		}
 		myCache.mySet('VoiceContext', voiceContextCache);
 
@@ -219,12 +219,12 @@ export class MyClient extends Client {
 			if (!guildInform) {
 				await prisma.guilds.create({
 					data: {
-						...defaultGuildInform,
+						...DefaultGuildInform,
 						discordId
 					}
 				});
 				myCache.mySet('Guild', {
-					[discordId]: defaultGuildInform
+					[discordId]: DefaultGuildInform
 				});
 			} else {
 				delete guildInform.discordId;
@@ -236,12 +236,12 @@ export class MyClient extends Client {
 			if (!guildChannelScan) {
 				await prisma.channelScan.create({
 					data: {
-						...defaultChannelScanResult,
+						...DefaultChannelScanResult,
 						discordId
 					}
 				});
 				myCache.mySet('ChannelScan', {
-					[discordId]: defaultChannelScanResult
+					[discordId]: DefaultChannelScanResult
 				});
 			} else {
 				myCache.mySet('ChannelScan', deSerializeChannelScan(guildChannelScan));
@@ -255,10 +255,10 @@ export class MyClient extends Client {
 
 			if (!mentorshipConfig) {
 				await prisma.mentorship.create({
-					data: defaultMentorshipConfig
+					data: DefaultMentorshipConfig
 				});
 				myCache.mySet('MentorshipConfig', {
-					[discordId]: defaultMentorshipConfig
+					[discordId]: DefaultMentorshipConfig
 				});
 			} else {
 				myCache.mySet('MentorshipConfig', {
@@ -277,7 +277,9 @@ export class MyClient extends Client {
 			});
 
 			if (currentEpoch) {
-				myCache.mySet('CurrentEpoch', currentEpoch);
+				myCache.mySet('CurrentEpoch', {
+					[discordId]: currentEpoch
+				});
 				this.table.addRow('Epoch', '✅ Fetched and cached');
 			}
 

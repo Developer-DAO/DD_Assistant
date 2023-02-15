@@ -44,7 +44,7 @@ import {
 import {
 	ChannelOptionName,
 	COMMAND_CONTENT,
-	defaultPartialChannelInform,
+	DefaultPartialChannelInform,
 	ERROR_REPLY,
 	MONTH,
 	NUMBER,
@@ -280,6 +280,14 @@ export function checkToBeArchivedChannelPermission(channel: TextChannel, botId: 
 		'ViewChannel',
 		'SendMessages',
 		'ManageChannels'
+	]);
+}
+
+export function checkStickyTextChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ReadMessageHistory'
 	]);
 }
 
@@ -581,7 +589,7 @@ export async function scanChannel(
 
 		if (parentId in scanResult) {
 			scanResult[parentId].channels[channelId] = {
-				...defaultPartialChannelInform,
+				...DefaultPartialChannelInform,
 				channelName: channel.name
 			};
 		} else {
@@ -589,7 +597,7 @@ export async function scanChannel(
 				parentName: parentName,
 				channels: {
 					[channelId]: {
-						...defaultPartialChannelInform,
+						...DefaultPartialChannelInform,
 						channelName: channel.name
 					}
 				}
@@ -698,7 +706,7 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 
 				const lastTimestamp = channels[channelId].lastMsgTimestamp;
 
-				if (lastTimestamp === defaultPartialChannelInform.lastMsgTimestamp) {
+				if (lastTimestamp === DefaultPartialChannelInform.lastMsgTimestamp) {
 					lastMsgTimeField = lastMsgTimeField.concat('> `unfetchable`\n');
 				} else {
 					lastMsgTimeField = lastMsgTimeField.concat(`> <t:${lastTimestamp}:R>\n`);
@@ -1004,7 +1012,7 @@ export async function createChannelHandler(
 
 	if (parentId in scanResult) {
 		scanResult[parentId].channels[newChannel.id] = {
-			...defaultPartialChannelInform,
+			...DefaultPartialChannelInform,
 			channelName: newChannel.name
 		};
 	} else {
@@ -1012,7 +1020,7 @@ export async function createChannelHandler(
 			parentName: parentName,
 			channels: {
 				[newChannel.id]: {
-					...defaultPartialChannelInform,
+					...DefaultPartialChannelInform,
 					channelName: newChannel.name
 				}
 			}
