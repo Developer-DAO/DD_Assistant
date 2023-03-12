@@ -23,20 +23,21 @@ import { CommandType } from '../types/Command';
 import { RegisterCommandsOptions } from '../types/CommandRegister';
 import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMenu';
 import { ModalType } from '../types/Modal';
-import { CallType } from '../types/Util';
 import {
 	DefaultChannelScanResult,
 	DefaultGuildInform,
 	DefaultMentorshipConfig,
 	DefaultVoiceContext,
 	LINK,
-	NUMBER
+	NUMBER,
+	StickyMsgTypeToMsg
 } from '../utils/const';
 import { logger } from '../utils/logger';
 import {
 	autoArchive,
-	checkStickyAndInit,
+	awaitWrap,
 	checkTextChannelPermission,
+	checkTextChannelPermissionForStickyMsg,
 	deSerializeChannelScan,
 	getNextBirthday
 } from '../utils/util';
@@ -283,6 +284,40 @@ export class MyClient extends Client {
 				this.table.addRow('Epoch', '✅ Fetched and cached');
 			}
 
+			const stickRecords = await prisma.stickyInform.findFirst({
+				where: {
+					discordId
+				},
+				include: {
+					stickRecords: {
+						where: {
+							stickyInformDiscordId: discordId
+						}
+					}
+				}
+			});
+
+			if (stickRecords) {
+				myCache.mySet(
+					'StickyInform',
+					stickRecords.stickRecords.reduce((pre, cur) => {
+						pre[cur.channelId] = cur;
+						return pre;
+					}, {})
+				);
+			} else {
+				await prisma.stickyInform.create({
+					data: {
+						discordId,
+						stickRecords: {
+							create: []
+						}
+					}
+				});
+				myCache.mySet('StickyInform', {});
+			}
+			this.table.addRow('Sticky Records', '✅ Fetched and cached');
+
 			const hashNodeData = await prisma.hashNodeSub.findMany({
 				where: {
 					discordId: discordId
@@ -323,32 +358,37 @@ export class MyClient extends Client {
 	}
 
 	private async _loadSticky() {
-		const guildsCache = myCache.myGet('Guild');
+		const guild = this.guilds.cache.get(process.env.GUILDID);
+		const stickyRecords = myCache.myGet('StickyInform');
 
-		for (const [guildId, guild] of this.guilds.cache) {
-			if (guild.available) {
-				const { introductionChannel, womenIntroductionChannel } =
-					guildsCache[guildId].channels;
-				const botId = guild.members.me.id;
+		if (!guild || Object.keys(stickyRecords).length === 0) return;
+		const botId = guild.members.me.id;
 
-				if (introductionChannel) {
-					await checkStickyAndInit(
-						guild.channels,
-						introductionChannel,
-						botId,
-						CallType.ONBOARDING
-					);
-				}
-				if (womenIntroductionChannel) {
-					await checkStickyAndInit(
-						guild.channels,
-						womenIntroductionChannel,
-						botId,
-						CallType.WOMENVIBES
-					);
-				}
+		for (const { channelId, messageId, messageType } of Object.values(stickyRecords)) {
+			const channel = guild.channels.cache.get(channelId) as TextChannel;
+
+			if (checkTextChannelPermissionForStickyMsg(channel, botId)) continue;
+			if (!channel) continue;
+			const { result: message } = await awaitWrap(channel.messages.fetch(messageId));
+
+			if (message) {
+				await message.delete();
 			}
+			stickyRecords[channelId].messageId = (await channel.send(StickyMsgTypeToMsg[messageType])).id;
 		}
+		await Promise.all(
+			Object.values(stickyRecords).map((value) =>
+				prisma.stickyRecord.update({
+					where: {
+						channelId: value.channelId
+					},
+					data: {
+						messageId: value.messageId
+					}
+				})
+			)
+		);
+		myCache.mySet('StickyInform', stickyRecords);
 	}
 
 	private async _fetchHashNodePost(client: MyClient) {

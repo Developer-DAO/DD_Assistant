@@ -29,7 +29,7 @@ export enum CommandNameEmun {
 	Birthday = 'birthday',
 	Scan = 'scan',
 	Collect = 'collect',
-	Mentorship = 'mentorship',
+	Mentorship = 'ment',
 	Hashnode_sub = 'hashnode_sub',
 	Hashnode_unsub = 'hashnode_unsub',
 	Contact = 'contact'

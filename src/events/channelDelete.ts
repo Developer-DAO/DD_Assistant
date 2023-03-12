@@ -14,7 +14,7 @@ export default new Event(
 	'channelDelete',
 	async (deletedChannel: NonThreadGuildBasedChannel | DMChannel) => {
 		// todo handle this case in the future
-		if (!myCache.myHasAll()) return;
+		if (!myCache.myHasesExcept(['CurrentEpoch'])) return;
 		if (deletedChannel.type === ChannelType.DM) return;
 
 		const guildId = deletedChannel.guild.id;

@@ -1,14 +1,15 @@
-import { Mentorship, Prisma } from '@prisma/client';
+import { Mentorship, Prisma, StickyMessageType } from '@prisma/client';
 import dayjs from 'dayjs';
 import {
 	ActionRowBuilder,
 	APIEmbedField,
 	ApplicationCommandOptionType,
 	ApplicationCommandType,
+	ButtonBuilder,
 	ButtonInteraction,
+	ButtonStyle,
 	ChannelType,
 	CommandInteractionOptionResolver,
-	ComponentType,
 	EmbedBuilder,
 	GuildMember,
 	InteractionReplyOptions,
@@ -21,11 +22,22 @@ import { sprintf } from 'sprintf-js';
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
+import { ButtonCollectorCustomId, ButtonCustomIdEnum } from '../types/Button';
 import { CommandNameEmun, ExtendedCommandInteration } from '../types/Command';
 import { Result } from '../types/Result';
-import { COMMAND_CONTENT, NUMBER } from '../utils/const';
+import {
+	COMMAND_CONTENT,
+	DefaultMentorshipConfig,
+	MentorshipChannelOptionName,
+	NUMBER
+} from '../utils/const';
 import { logger } from '../utils/logger';
-import { checkTextChannelPermission, fetchCommandId } from '../utils/util';
+import {
+	checkTextChannelPermission,
+	checkTextChannelPermissionForStickyMsg,
+	fetchCommandId,
+	stickyMsgHandler
+} from '../utils/util';
 
 export default new Command({
 	name: CommandNameEmun.Mentorship,
@@ -56,14 +68,20 @@ export default new Command({
 					description: 'Set up mentorship channels',
 					options: [
 						{
-							name: 'playground',
+							name: MentorshipChannelOptionName.Playground,
 							description: 'Choose a channel as a playground channel',
 							type: ApplicationCommandOptionType.Channel,
 							channelTypes: [ChannelType.GuildText]
 						},
 						{
-							name: 'mentor',
+							name: MentorshipChannelOptionName.Mentor,
 							description: 'Choose a channel as a mentor channel',
+							type: ApplicationCommandOptionType.Channel,
+							channelTypes: [ChannelType.GuildText]
+						},
+						{
+							name: MentorshipChannelOptionName.Mentee,
+							description: 'Choose a channel as a mentee channel',
 							type: ApplicationCommandOptionType.Channel,
 							channelTypes: [ChannelType.GuildText]
 						}
@@ -192,6 +210,7 @@ export default new Command({
 					e instanceof Prisma.PrismaClientValidationError ||
 					e instanceof Prisma.PrismaClientUnknownRequestError
 				) {
+					logger.error(e);
 					return interaction.followUp({
 						content: 'Failed to upload data to the database, please try again later.'
 					});
@@ -225,7 +244,7 @@ export default new Command({
 
 		if (subCommandName === 'add_pair') {
 			const expireInMilsec = NUMBER.ADD_PAIR_INTERVAL;
-			const expireInSec = Math.floor(expireInMilsec / 1000);
+			const expireInSec = Math.floor(expireInMilsec / 1000 + new Date().getTime());
 			const idleInMilsec = 1 * 60 * 1000;
 			const idleInSec = Math.floor(idleInMilsec / 1000);
 			const replyMsg = await interaction.reply({
@@ -243,6 +262,12 @@ export default new Command({
 							.setPlaceholder('Please choose at least one mentee from the list')
 							.setMinValues(1)
 							.setMaxValues(10)
+					]),
+					new ActionRowBuilder<ButtonBuilder>().addComponents([
+						new ButtonBuilder()
+							.setCustomId(ButtonCollectorCustomId.PairConfirm)
+							.setLabel('Confirm')
+							.setStyle(ButtonStyle.Primary)
 					])
 				],
 				fetchReply: true,
@@ -250,7 +275,6 @@ export default new Command({
 			});
 
 			const collector = replyMsg.createMessageComponentCollector({
-				componentType: ComponentType.UserSelect | ComponentType.Button,
 				time: expireInMilsec,
 				idle: idleInMilsec
 			});
@@ -300,6 +324,7 @@ export default new Command({
 						content: result.error.message,
 						components: []
 					});
+					return;
 				}
 
 				await interaction.editReply({
@@ -308,6 +333,7 @@ export default new Command({
 						.toString()}.`,
 					components: []
 				});
+				return;
 			});
 			return;
 		}
@@ -323,15 +349,18 @@ export default new Command({
 			});
 
 			if (!currentEpoch) {
+				// todo /ment start_epoch enable epoch adjustion
 				const epoch = await prisma.epoch.create({
 					data: {
 						startTimestamp: new Date(),
-						endTimestamp: dayjs().add(7, 'day').toDate(),
+						endTimestamp: dayjs().add(1, 'month').toDate(),
 						discordId: interaction.guildId
 					}
 				});
 
-				myCache.mySet('CurrentEpoch', epoch);
+				myCache.mySet('CurrentEpoch', {
+					[interaction.guildId]: epoch
+				});
 				return interaction.followUp({
 					content: `You have started the epoch.\nCurrent Epoch: <t:${Math.floor(
 						epoch.startTimestamp.getTime() / 1000
@@ -377,6 +406,7 @@ async function _handleAdminRole(
 	const currentConfig = myCache.myGet('MentorshipConfig')[guildId];
 	const roleId = args.getRole('name').id;
 
+	delete currentConfig.discordId;
 	await interaction.deferReply({ ephemeral: true });
 	if (roleId !== currentConfig.adminRole) {
 		await prisma.mentorship.update({
@@ -417,18 +447,19 @@ async function _handleChannelSetting(
 	const { guildId } = interaction;
 	const currentConfig = myCache.myGet('MentorshipConfig')[guildId];
 
-	type ChannelOptionName = 'playground' | 'mentor';
+	delete currentConfig.discordId;
 	type PrismaChannelProperty<T> = {
 		// eslint-disable-next-line no-unused-vars
 		[K in keyof T]: K extends `${infer Left}Channel` ? K : never;
 	}[keyof T];
 
 	const optionNameToPrismaProperty: Record<
-		ChannelOptionName,
+		MentorshipChannelOptionName,
 		PrismaChannelProperty<Mentorship>
 	> = {
 		mentor: 'mentorChannel',
-		playground: 'playgroundChannel'
+		playground: 'playgroundChannel',
+		mentee: 'menteeChannel'
 	};
 	const successReplyArray: Array<string> = [];
 	const failReplyArray: Array<string> = [];
@@ -452,6 +483,51 @@ async function _handleChannelSetting(
 			continue;
 		}
 
+		if (channelOptionName === MentorshipChannelOptionName.Playground) {
+			const result = await _initPlaygroundChannel(targetChannel);
+
+			if (result.is_err()) {
+				failReplyArray.push(
+					sprintf(
+						sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
+							setChannelName: channelOptionName,
+							targetChannelId: targetChannelId,
+							reason: result.error.message
+						})
+					)
+				);
+				continue;
+			}
+		}
+
+		if (channelOptionName === MentorshipChannelOptionName.Mentee) {
+			const permissionChecking = checkTextChannelPermissionForStickyMsg(targetChannel, botId);
+
+			if (permissionChecking) {
+				failReplyArray.push(
+					sprintf(
+						sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
+							setChannelName: channelOptionName,
+							targetChannelId: targetChannelId,
+							reason: permissionChecking
+						})
+					)
+				);
+				continue;
+			}
+			const preChannelId = myCache.myGet('MentorshipConfig')[guildId].menteeChannel;
+
+			if (preChannelId && preChannelId !== targetChannel.id) {
+				const preChannel = interaction.guild.channels.cache.get(
+					preChannelId
+				) as TextChannel;
+
+				await stickyMsgHandler(targetChannel, StickyMessageType.Mentorship, preChannel);
+			} else {
+				await stickyMsgHandler(targetChannel, StickyMessageType.Mentorship);
+			}
+		}
+
 		successReplyArray.push(
 			sprintf(COMMAND_CONTENT.CHANNEL_SETTING_SUCCESS_REPLY, {
 				setChannelName: channelOptionName,
@@ -467,7 +543,7 @@ async function _handleChannelSetting(
 	}
 
 	if (successReplyArray.length !== 0) {
-		await prisma.guilds.update({
+		await prisma.mentorship.update({
 			where: {
 				discordId: process.env.GUILDID
 			},
@@ -494,6 +570,68 @@ async function _handleChannelSetting(
 	});
 }
 
+async function _initPlaygroundChannel(targetChannel: TextChannel): Promise<Result<null, Error>> {
+	try {
+		const { guildId } = targetChannel;
+		const currentEpoch = myCache.myGet('CurrentEpoch')?.[guildId];
+		const msg = await targetChannel.send({
+			embeds: [
+				new EmbedBuilder()
+					.setTitle('Mentorship Dashboard')
+					.setDescription(
+						`Current Epoch: ${
+							myCache.myHas('CurrentEpoch')
+								? `<t:${Math.floor(
+										currentEpoch.startTimestamp.getTime() / 1000
+								  )}:f> => <t:${Math.floor(
+										currentEpoch.endTimestamp.getTime() / 1000
+								  )}:f>`
+								: `Waiting to start...`
+						}\nTotal confirmed mins: \`0\` mins\nTotal CODE to be distributed: \`0\` $CODE\nTotal Actice Mentors in this epoch: \`0\`\nTotal Actice Mentees in this epoch: \`0\``
+					)
+					.setThumbnail(targetChannel.guild.iconURL())
+			],
+			components: [
+				new ActionRowBuilder<ButtonBuilder>().addComponents([
+					new ButtonBuilder()
+						.setCustomId(ButtonCustomIdEnum.ClaimMentorEffort)
+						.setLabel('Claim Teaching Period')
+						.setStyle(ButtonStyle.Primary)
+						.setEmoji('⏲️'),
+					new ButtonBuilder()
+						.setCustomId(ButtonCustomIdEnum.ConfirmMentorEffort)
+						.setLabel('Confirm Mentor Efforts')
+						.setStyle(ButtonStyle.Secondary)
+						.setEmoji('✅')
+				])
+			]
+		});
+
+		await prisma.mentorship.update({
+			where: {
+				discordId: guildId
+			},
+			data: {
+				playgroundChannelPinnedMsgId: msg.id
+			}
+		});
+		myCache.mySet('MentorshipConfig', {
+			[guildId]: {
+				...myCache.myGet('MentorshipConfig')[guildId],
+				playgroundChannelPinnedMsgId: msg.id
+			}
+		});
+		return Result.Ok(null);
+	} catch (e: unknown) {
+		if (e instanceof Error) {
+			logger.info(e);
+			return Result.Err(e);
+		}
+		logger.error(e);
+		return Result.Err(new Error('Unknown error happned.'));
+	}
+}
+
 async function _handleTokenReward(
 	interaction: ExtendedCommandInteration,
 	args: CommandInteractionOptionResolver
@@ -502,6 +640,7 @@ async function _handleTokenReward(
 	const currentConfig = myCache.myGet('MentorshipConfig')[guildId];
 	const rewardAmount = args.getInteger('amount');
 
+	delete currentConfig.discordId;
 	await interaction.deferReply({ ephemeral: true });
 	if (rewardAmount !== currentConfig.tokenPerMin) {
 		await prisma.mentorship.update({
@@ -532,6 +671,10 @@ function _readCurrentConfig(interaction: ExtendedCommandInteration) {
 		{
 			name: 'Admin Role',
 			value: currentConfig.adminRole
+				? currentConfig.adminRole === DefaultMentorshipConfig.adminRole
+					? '`everyone`'
+					: `<@&${currentConfig.adminRole}>`
+				: '`Unavailable`'
 		},
 		{
 			name: 'Token Reward',
@@ -540,15 +683,22 @@ function _readCurrentConfig(interaction: ExtendedCommandInteration) {
 		{
 			name: 'Mentor Channel',
 			value: currentConfig.mentorChannel
-				? `Unavailable`
-				: `<#${currentConfig.mentorChannel}>`,
+				? `<#${currentConfig.mentorChannel}>`
+				: '`Unavailable`',
+			inline: true
+		},
+		{
+			name: 'Mentee Channel',
+			value: currentConfig.menteeChannel
+				? `<#${currentConfig.menteeChannel}>`
+				: '`Unavailable`',
 			inline: true
 		},
 		{
 			name: 'Playground Channel',
 			value: currentConfig.playgroundChannel
-				? `Unavailable`
-				: `<#${currentConfig.playgroundChannel}>`,
+				? `<#${currentConfig.playgroundChannel}>`
+				: '`Unavailable`',
 			inline: true
 		}
 	];
@@ -558,11 +708,12 @@ function _readCurrentConfig(interaction: ExtendedCommandInteration) {
 			new EmbedBuilder()
 				.setTitle(`${interaction.guild.name} Mentorship Configuration`)
 				.addFields(embedFields)
-		]
+		],
+		ephemeral: true
 	});
 }
 
-async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Error>> {
+async function _addPair(inform: MentorshipUserInform): Promise<Result<null, Error>> {
 	if (!inform.mentor) {
 		return Result.Err(
 			new Error('Sorry, you have to choose one menter before you confirm this pair.')
@@ -630,6 +781,7 @@ async function _addPair(inform: MentorshipUserInform): Promise<Result<void, Erro
 				name: mentorName
 			}
 		});
+		return Result.Ok(null);
 	} catch (error) {
 		logger.error(error);
 		return Result.Err(

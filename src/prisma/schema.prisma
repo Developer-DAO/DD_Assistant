@@ -21,6 +21,25 @@ model Guilds {
     switch             SwitchInform
 }
 
+model StickyInform {
+    discordId    String         @id @map("_id")
+    stickRecords StickyRecord[]
+}
+
+model StickyRecord {
+    channelId             String       @id @map("_id")
+    messageId             String       @default("")
+    StickyInform          StickyInform @relation(fields: [stickyInformDiscordId], references: [discordId])
+    stickyInformDiscordId String
+    messageType           StickyMessageType
+}
+
+enum StickyMessageType {
+    Onboarding
+    OnboardingWomen
+    Mentorship
+}
+
 model ChannelScan {
     discordId  String     @id @map("_id")
     categories Category[]
@@ -35,11 +54,13 @@ model Birthday {
 }
 
 model Mentorship {
-    discordId         String @id @map("_id")
-    adminRole         String @default("")
-    mentorChannel     String @default("")
-    playgroundChannel String @default("")
-    tokenPerMin       Int    @default(0)
+    discordId                    String @id @map("_id")
+    adminRole                    String @default("")
+    mentorChannel                String @default("")
+    playgroundChannel            String @default("")
+    menteeChannel                String @default("")
+    playgroundChannelPinnedMsgId String @default("")
+    tokenPerMin                  Int    @default(0)
 }
 
 model Mentee {

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { ChannelSetting, Mentorship } from '@prisma/client';
+import { ChannelSetting, Mentorship, StickyMessageType } from '@prisma/client';
 import {
 	ActionRowBuilder,
 	ApplicationCommandOptionChoiceData,
@@ -173,8 +173,10 @@ export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
 	HashNodeSub: 'HashNodeSub',
 	ContactModalCache: 'ContactModalCache',
 	MentorshipConfig: 'MentorshipConfig',
-	CurrentEpoch: 'CurrentEpoch'
+	CurrentEpoch: 'CurrentEpoch',
+	StickyInform: 'StickyInform'
 };
+
 export enum ChannelOptionName {
 	Celebration = 'celebration',
 	Notification = 'notification',
@@ -242,7 +244,7 @@ export const COMMAND_CONTENT: CommandContent = {
 		'Hi, D_Ds in <#%(channelId)s>\n\nAs there has been no action taken on our request to add a description to this channel, we have interpreted this as the channel is not of material importance to the server. Therefore it has been queued for archiving.\n\nChannels that do not have a description, fall out of compliance with the new standards being established by the Server Architecture Team — as it makes it difficult for Developer DAO members to be easily navigate our Discord, and find information quickly.\n\n**We are going to archive this channel <t:%(timestamp)s:R> from this notice being sent out ⚠️**\n\nIf you believe that this channel is important and should remain, please let us know in the <#993496711798456380> channel, by creating a thread using the format below:\n\n**Thread Name**: `re [insert channel name]`\n\nThanks for your cooperation! 🧰'
 };
 
-export const STICKYMSG: Readonly<MessageReplyOptions> = {
+const OnboardingStickyMsg: Readonly<MessageReplyOptions> = {
 	content: COMMAND_CONTENT.INTRODUCTION,
 	components: [
 		new ActionRowBuilder<ButtonBuilder>().addComponents([
@@ -260,7 +262,7 @@ export const STICKYMSG: Readonly<MessageReplyOptions> = {
 	]
 };
 
-export const WOMENSTICKYMSG: Readonly<MessageReplyOptions> = {
+const WomenOnboardingStickyMsg: Readonly<MessageReplyOptions> = {
 	content: COMMAND_CONTENT.WOMEN_INTRODUCTION,
 	components: [
 		new ActionRowBuilder<ButtonBuilder>().addComponents([
@@ -276,6 +278,31 @@ export const WOMENSTICKYMSG: Readonly<MessageReplyOptions> = {
 				.setStyle(ButtonStyle.Secondary)
 		])
 	]
+};
+
+const MentorshipStickyMsg: Readonly<MessageReplyOptions> = {
+	content:
+		'Hello, mentees and mentors. please click the button to claim or confirm your efforts!',
+	components: [
+		new ActionRowBuilder<ButtonBuilder>().addComponents([
+			new ButtonBuilder()
+				.setCustomId(ButtonCustomIdEnum.ClaimMentorEffort)
+				.setLabel('Claim Teaching Period')
+				.setStyle(ButtonStyle.Primary)
+				.setEmoji('⏲️'),
+			new ButtonBuilder()
+				.setCustomId(ButtonCustomIdEnum.ConfirmMentorEffort)
+				.setLabel('Confirm Mentor Efforts')
+				.setStyle(ButtonStyle.Secondary)
+				.setEmoji('✅')
+		])
+	]
+};
+
+export const StickyMsgTypeToMsg: Record<StickyMessageType, MessageReplyOptions> = {
+	Mentorship: MentorshipStickyMsg,
+	Onboarding: OnboardingStickyMsg,
+	OnboardingWomen: WomenOnboardingStickyMsg
 };
 
 export const TIMEZONELIST: Array<string> = list.reduce((pre, cur) => {

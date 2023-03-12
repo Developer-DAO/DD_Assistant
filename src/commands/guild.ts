@@ -1,3 +1,4 @@
+import { StickyMessageType } from '@prisma/client';
 import {
 	ApplicationCommandOptionType,
 	ApplicationCommandType,
@@ -299,17 +300,22 @@ export default new Command({
 						const preChannelId = myCache.myGet('Guild')[guildId].channels[
 							channelOptionNameAndPrisamPropertyMap[channelOptionName]
 						] as string;
+						const stickyMessageType =
+							channelOptionName === ChannelOptionName.Introduction
+								? StickyMessageType.Onboarding
+								: StickyMessageType.OnboardingWomen;
 
 						if (preChannelId && preChannelId !== channelId) {
 							const preChannel = interaction.guild.channels.cache.get(
 								preChannelId
 							) as TextChannel;
 
-							stickyMsgHandler(targetChannel, botId, preChannel, channelOptionName);
+							stickyMsgHandler(targetChannel, stickyMessageType, preChannel);
 						} else {
-							stickyMsgHandler(targetChannel, botId);
+							stickyMsgHandler(targetChannel, stickyMessageType);
 						}
 					}
+
 					successReplyArray.push(
 						sprintf(COMMAND_CONTENT.CHANNEL_SETTING_SUCCESS_REPLY, {
 							setChannelName: channelOptionName,

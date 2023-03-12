@@ -15,7 +15,7 @@ import { createChannelHandler, getParentInform } from '../utils/util';
 
 export default new Event('channelCreate', async (newChannel: NonThreadGuildBasedChannel) => {
 	// todo handle this case in the future
-	if (!myCache.myHasAll()) return;
+	if (!myCache.myHasesExcept(['CurrentEpoch'])) return;
 	const guildId = newChannel.guild.id;
 	const guildInformCache = myCache.myGet('Guild')[guildId];
 	const { archiveCategoryChannels } = guildInformCache.channels;
