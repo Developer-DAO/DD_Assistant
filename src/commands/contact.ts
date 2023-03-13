@@ -13,6 +13,7 @@ import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { CommandNameEmun } from '../types/Command';
+import { ModalCustomIdEnum } from '../types/Modal';
 import { awaitWrap, checkTextChannelPermission } from '../utils/util';
 
 export default new Command({
@@ -55,7 +56,7 @@ export default new Command({
 			const user = args.getUser('member');
 			const modal = new ModalBuilder()
 				.setTitle('Create Point of Contact')
-				.setCustomId('contact')
+				.setCustomId(ModalCustomIdEnum.Contact)
 				.addComponents(
 					new ActionRowBuilder<TextInputBuilder>().addComponents([
 						new TextInputBuilder()

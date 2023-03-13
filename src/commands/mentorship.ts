@@ -254,13 +254,12 @@ export default new Command({
 						new UserSelectMenuBuilder()
 							.setCustomId('mentor_selection')
 							.setPlaceholder('Please choose one mentor from the list')
-							.setMaxValues(1)
 					]),
 					new ActionRowBuilder<UserSelectMenuBuilder>().addComponents([
 						new UserSelectMenuBuilder()
 							.setCustomId('mentee_selection')
 							.setPlaceholder('Please choose at least one mentee from the list')
-							.setMinValues(1)
+							.setMinValues(0)
 							.setMaxValues(10)
 					]),
 					new ActionRowBuilder<ButtonBuilder>().addComponents([
@@ -304,10 +303,7 @@ export default new Command({
 			);
 
 			collector.on('end', async (collected) => {
-				if (
-					collected.size === 0 ||
-					!collected.find((value) => value instanceof ButtonInteraction)
-				) {
+				if (collected.size === 0) {
 					const { commandName, guild } = interaction;
 					const mentorshipCommandId = fetchCommandId(commandName, guild);
 

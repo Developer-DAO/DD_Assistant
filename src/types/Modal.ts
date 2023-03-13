@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { GuildMember, ModalSubmitInteraction } from 'discord.js';
 
 import { MyClient } from '../structures/Client';
@@ -12,9 +13,12 @@ interface ModalRunOptions {
 }
 
 type RunFunction = (options: ModalRunOptions) => any;
-type ModalCustomId = 'contact';
+export enum ModalCustomIdEnum {
+	Contact = 'contact',
+	ClaimMentorEffort = 'claim_effort'
+}
 
 export interface ModalType {
-	customId: ModalCustomId;
+	customId: ModalCustomIdEnum;
 	execute: RunFunction;
 }

@@ -1,9 +1,10 @@
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Modal } from '../structures/Modal';
+import { ModalCustomIdEnum } from '../types/Modal';
 
 export default new Modal({
-	customId: 'contact',
+	customId: ModalCustomIdEnum.Contact,
 	execute: async ({ interaction }) => {
 		const title = interaction.fields.getTextInputValue('title').trim();
 		const description = interaction.fields.getTextInputValue('description').trim();
