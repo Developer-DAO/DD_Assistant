@@ -48,6 +48,7 @@ export interface ModalInform {
 export type HashNodeSubInform = Pick<HashNodeSub, 'latestCuid' | 'id' | 'hashNodeUserName'>;
 
 type GuildCache = Record<string, GuildInform>;
+type GuildId = string;
 export type ChannelScanCache = Record<string, GuildChannelScan>;
 export type PartialChannelInform = Omit<ChannelInform, 'channelId'>;
 export type ChannelInformCache = Record<string, PartialChannelInform>;
@@ -56,7 +57,7 @@ export type VoiceContextCache = Record<string, VoiceContextInform>;
 export type HashNodeSubCache = Record<string, HashNodeSubInform>;
 export type ModalCache = Record<string, ModalInform>;
 export type MentorshipCache = Record<string, Mentorship>;
-export type EpochCache = Record<string, Epoch>;
+export type EpochCache = Record<GuildId, Epoch>;
 type ExtractProperty<T, U extends keyof T> = {
 	[K in keyof T]: K extends U ? T[K] : never;
 }[keyof T];

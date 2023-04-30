@@ -14,8 +14,12 @@ interface ModalRunOptions {
 
 type RunFunction = (options: ModalRunOptions) => any;
 export enum ModalCustomIdEnum {
-	Contact = 'contact',
-	ClaimMentorEffort = 'claim_effort'
+	Contact = 'contact'
+}
+
+export enum ModalCollectorCustomIdEnum {
+	ClaimMentorEffort = 'claim_effort',
+	SendMessageToMentor = 'send_message_to_mentor',
 }
 
 export interface ModalType {

@@ -6,9 +6,6 @@ import {
 	OnboardInform,
 	StickyMessageType
 } from '@prisma/client';
-import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone';
-import utc from 'dayjs/plugin/utc';
 import {
 	APIEmbedField,
 	CategoryChannel,
@@ -36,12 +33,14 @@ import {
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import { ContextMenuNameEnum } from '../types/ContextMenu';
+import { TimeOutError } from '../types/Error';
 import {
 	awaitWrapSendRequestReturnValue,
 	CallType,
 	GetNextBirthday,
 	parentChannelInform
 } from '../types/Util';
+import dayjs from '../utils/dayjs';
 import {
 	COMMAND_CONTENT,
 	DefaultPartialChannelInform,
@@ -52,7 +51,6 @@ import {
 	StickyMsgTypeToMsg,
 	WEEK
 } from './const';
-import { TimeOutError } from './error';
 import { logger } from './logger';
 export interface awaitWrapType<T> {
 	result: T | null;
@@ -1086,9 +1084,6 @@ export function fetchCommandId(commandName: CommandNameEmun | ContextMenuNameEnu
 }
 
 export function getNextBirthday(month: string, day: string, offset: string): GetNextBirthday {
-	dayjs.extend(utc);
-	dayjs.extend(timezone);
-
 	try {
 		const thisYear = dayjs().year();
 		let birthday = dayjs.tz(`${thisYear}-${month}-${day}`, 'YYYY-MM-DD', offset).unix();
@@ -1117,4 +1112,30 @@ export function dateIsValid(month: string, day: string) {
 	const thisYear = dayjs().year();
 
 	return dayjs(`${thisYear}-${month}-${day}`, 'YYYY-MM-DD').isValid();
+}
+
+export function startOfIsoWeekUnix() {
+	return dayjs.utc().startOf('isoWeek').unix();
+}
+
+export function isEpochEnd() {
+	const currentEpoch = myCache.myGet('CurrentEpoch')?.[process.env.GUILDID];
+	const now = dayjs().unix();
+
+	return (
+		!currentEpoch ||
+		now < Number(currentEpoch.startTimestamp) ||
+		now > Number(currentEpoch.endTimestamp)
+	);
+}
+
+export function separateArray<T>(arr: T[], numSubarrays: number): T[][] {
+	const subarrays: T[][] = Array.from({ length: numSubarrays }, () => []);
+	const subarraySize = Math.ceil(arr.length / numSubarrays);
+
+	for (let i = 0; i < numSubarrays; i++) {
+		subarrays[i] = arr.slice(i * subarraySize, (i + 1) * subarraySize);
+	}
+
+	return subarrays;
 }

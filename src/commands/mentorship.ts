@@ -1,5 +1,4 @@
-import { Mentorship, Prisma, StickyMessageType } from '@prisma/client';
-import dayjs from 'dayjs';
+import { Mentorship, Prisma } from '@prisma/client';
 import {
 	ActionRowBuilder,
 	APIEmbedField,
@@ -11,32 +10,36 @@ import {
 	ChannelType,
 	CommandInteractionOptionResolver,
 	EmbedBuilder,
+	Guild,
 	GuildMember,
 	InteractionReplyOptions,
+	Message,
 	TextChannel,
 	UserSelectMenuBuilder,
 	UserSelectMenuInteraction
 } from 'discord.js';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { sprintf } from 'sprintf-js';
 
+import { epochUpdate } from '../cron/cron';
 import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { ButtonCollectorCustomId, ButtonCustomIdEnum } from '../types/Button';
 import { CommandNameEmun, ExtendedCommandInteration } from '../types/Command';
-import { Result } from '../types/Result';
 import {
 	COMMAND_CONTENT,
 	DefaultMentorshipConfig,
 	MentorshipChannelOptionName,
 	NUMBER
 } from '../utils/const';
+import dayjs from '../utils/dayjs';
 import { logger } from '../utils/logger';
 import {
 	checkTextChannelPermission,
-	checkTextChannelPermissionForStickyMsg,
 	fetchCommandId,
-	stickyMsgHandler
+	isEpochEnd,
+	startOfIsoWeekUnix
 } from '../utils/util';
 
 export default new Command({
@@ -70,18 +73,6 @@ export default new Command({
 						{
 							name: MentorshipChannelOptionName.Playground,
 							description: 'Choose a channel as a playground channel',
-							type: ApplicationCommandOptionType.Channel,
-							channelTypes: [ChannelType.GuildText]
-						},
-						{
-							name: MentorshipChannelOptionName.Mentor,
-							description: 'Choose a channel as a mentor channel',
-							type: ApplicationCommandOptionType.Channel,
-							channelTypes: [ChannelType.GuildText]
-						},
-						{
-							name: MentorshipChannelOptionName.Mentee,
-							description: 'Choose a channel as a mentee channel',
 							type: ApplicationCommandOptionType.Channel,
 							channelTypes: [ChannelType.GuildText]
 						}
@@ -153,6 +144,11 @@ export default new Command({
 			description: 'Start the next epoch to gather mentorship information.'
 		},
 		{
+			type: ApplicationCommandOptionType.Subcommand,
+			name: 'end_epoch',
+			description: 'End to gather mentorship information in the next epoch.'
+		},
+		{
 			type: ApplicationCommandOptionType.SubcommandGroup,
 			name: 'collect',
 			description: 'Collect mentorship based on epoch.',
@@ -187,6 +183,7 @@ export default new Command({
 	execute: async ({ interaction, args }) => {
 		const subCommandGroupName = args.getSubcommandGroup();
 		const subCommandName = args.getSubcommand();
+		const guildId = interaction.guildId;
 
 		if (subCommandGroupName === 'configure') {
 			try {
@@ -243,12 +240,10 @@ export default new Command({
 		}
 
 		if (subCommandName === 'add_pair') {
-			const expireInMilsec = NUMBER.ADD_PAIR_INTERVAL;
-			const expireInSec = Math.floor(expireInMilsec / 1000 + new Date().getTime());
-			const idleInMilsec = 1 * 60 * 1000;
-			const idleInSec = Math.floor(idleInMilsec / 1000);
 			const replyMsg = await interaction.reply({
-				content: `Please select one mentor and corresponding mentees. After you finish, please click the button to confirm your choice. Please note that this message will expire when idle reaches ${idleInSec} secs or <t:${expireInSec}:R>. Once it expires, you have to run the command again.`,
+				content: sprintf(COMMAND_CONTENT.MENTORSHIP_ADD_PAIR_INTRODUCTION, {
+					expire: dayjs().unix() + NUMBER.ADD_PAIR_INTERVAL_IN_SEC
+				}),
 				components: [
 					new ActionRowBuilder<UserSelectMenuBuilder>().addComponents([
 						new UserSelectMenuBuilder()
@@ -274,8 +269,8 @@ export default new Command({
 			});
 
 			const collector = replyMsg.createMessageComponentCollector({
-				time: expireInMilsec,
-				idle: idleInMilsec
+				time: NUMBER.ADD_PAIR_INTERVAL_IN_SEC * 1000,
+				idle: NUMBER.ADD_PAIR_IDLE_INTERVAL_IN_SEC * 1000
 			});
 			const data: MentorshipUserInform = {
 				mentees: []
@@ -297,6 +292,21 @@ export default new Command({
 						}
 					} else {
 						await collectedInteraction.deferUpdate();
+						const inputCheck =
+							data.mentees.length === 0
+								? err('Please select at least one mentee.')
+								: !data.mentor
+								? err('Please select mentor first.')
+								: data.mentees.map((value) => value.id).includes(data.mentor.id)
+								? err('Mentee cannot include mentor himself/herself.')
+								: ok(null);
+
+						if (inputCheck.isErr()) {
+							await collectedInteraction.followUp({
+								content: inputCheck.error,
+								ephemeral: true
+							});
+						}
 						collector.stop();
 					}
 				}
@@ -313,11 +323,11 @@ export default new Command({
 					});
 					return;
 				}
-				const result = await _addPair(data);
+				const result = await addPair(data);
 
-				if (result.is_err()) {
+				if (result.isErr()) {
 					await interaction.editReply({
-						content: result.error.message,
+						content: 'Failed to add pair, please try again later.',
 						components: []
 					});
 					return;
@@ -335,39 +345,91 @@ export default new Command({
 		}
 
 		if (subCommandName === 'start_epoch') {
-			await interaction.deferReply({
-				ephemeral: true
-			});
-			const currentEpoch = await prisma.epoch.findFirst({
-				orderBy: {
-					startTimestamp: 'desc'
-				}
-			});
+			const { isEpochStarted } = myCache.myGet('MentorshipConfig')[guildId];
 
-			if (!currentEpoch) {
-				// todo /ment start_epoch enable epoch adjustion
-				const epoch = await prisma.epoch.create({
-					data: {
-						startTimestamp: new Date(),
-						endTimestamp: dayjs().add(1, 'month').toDate(),
-						discordId: interaction.guildId
-					}
-				});
+			if (isEpochStarted) {
+				const { startTimestamp, endTimestamp } = myCache.myGet('CurrentEpoch')[guildId];
 
-				myCache.mySet('CurrentEpoch', {
-					[interaction.guildId]: epoch
-				});
-				return interaction.followUp({
-					content: `You have started the epoch.\nCurrent Epoch: <t:${Math.floor(
-						epoch.startTimestamp.getTime() / 1000
-					)}:f> to <t:${Math.floor(epoch.endTimestamp.getTime() / 1000)}:f>`
+				return interaction.reply({
+					content: `Sorry, epoch has started from <t:${startTimestamp}:f> to <t:${endTimestamp}:f>.`,
+					ephemeral: true
 				});
 			}
+			const startTimestamp = startOfIsoWeekUnix().toString();
+			const endTimestamp = epochUpdate.getNextEpochEndUnixTime().toString();
 
-			return interaction.followUp({
-				content: `Sorry, epoch has been started.\nCurrent Epoch: <t:${Math.floor(
-					currentEpoch.startTimestamp.getTime() / 1000
-				)}:f> to <t:${Math.floor(currentEpoch.endTimestamp.getTime() / 1000)}:f>`
+			await interaction.deferReply({ ephemeral: true });
+			return ResultAsync.fromPromise(
+				prisma.$transaction([
+					prisma.mentorship.update({
+						where: {
+							discordId: guildId
+						},
+						data: {
+							isEpochStarted: true
+						}
+					}),
+					prisma.epoch.create({
+						data: {
+							discordId: guildId,
+							startTimestamp,
+							endTimestamp
+						}
+					})
+				]),
+				() => {
+					interaction.followUp({
+						content: `Sorry, something went wrong. Please try again.`,
+						ephemeral: true
+					});
+				}
+			).map(([newMentorshipConfig, currentEpoch]) => {
+				myCache.mySet('MentorshipConfig', {
+					[guildId]: newMentorshipConfig
+				});
+				myCache.mySet('CurrentEpoch', {
+					[guildId]: currentEpoch
+				});
+				return interaction.followUp({
+					content: `Epoch has started from <t:${startTimestamp}:f> to <t:${endTimestamp}:f>.`,
+					ephemeral: true
+				});
+			});
+		}
+
+		if (subCommandName === 'end_epoch') {
+			const { isEpochStarted } = myCache.myGet('MentorshipConfig')[guildId];
+
+			if (!isEpochStarted) {
+				return interaction.reply({
+					content: `Sorry, epoch is not started.`,
+					ephemeral: true
+				});
+			}
+			await interaction.deferReply({ ephemeral: true });
+			return ResultAsync.fromPromise(
+				prisma.mentorship.update({
+					where: {
+						discordId: guildId
+					},
+					data: {
+						isEpochStarted: false
+					}
+				}),
+				() => {
+					interaction.followUp({
+						content: `Sorry, something went wrong. Please try again.`,
+						ephemeral: true
+					});
+				}
+			).map((newConfig) => {
+				myCache.mySet('MentorshipConfig', {
+					[guildId]: newConfig
+				});
+
+				return interaction.followUp({
+					content: 'Epoch has ended.'
+				});
 			});
 		}
 
@@ -453,9 +515,7 @@ async function _handleChannelSetting(
 		MentorshipChannelOptionName,
 		PrismaChannelProperty<Mentorship>
 	> = {
-		mentor: 'mentorChannel',
-		playground: 'playgroundChannel',
-		mentee: 'menteeChannel'
+		playground: 'playgroundChannel'
 	};
 	const successReplyArray: Array<string> = [];
 	const failReplyArray: Array<string> = [];
@@ -468,60 +528,29 @@ async function _handleChannelSetting(
 
 		if (permissionChecking) {
 			failReplyArray.push(
-				sprintf(
-					sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
-						setChannelName: channelOptionName,
-						targetChannelId: targetChannelId,
-						reason: permissionChecking
-					})
-				)
+				sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
+					setChannelName: channelOptionName,
+					targetChannelId: targetChannelId,
+					reason: permissionChecking
+				})
 			);
 			continue;
 		}
 
 		if (channelOptionName === MentorshipChannelOptionName.Playground) {
-			const result = await _initPlaygroundChannel(targetChannel);
+			const result = await initPlaygroundChannel(targetChannel);
 
-			if (result.is_err()) {
+			if (result.isErr()) {
 				failReplyArray.push(
-					sprintf(
-						sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
-							setChannelName: channelOptionName,
-							targetChannelId: targetChannelId,
-							reason: result.error.message
-						})
-					)
+					sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
+						setChannelName: channelOptionName,
+						targetChannelId: targetChannelId,
+						reason: result.error.message
+					})
 				);
 				continue;
 			}
-		}
-
-		if (channelOptionName === MentorshipChannelOptionName.Mentee) {
-			const permissionChecking = checkTextChannelPermissionForStickyMsg(targetChannel, botId);
-
-			if (permissionChecking) {
-				failReplyArray.push(
-					sprintf(
-						sprintf(COMMAND_CONTENT.CHANNEL_SETTING_FAIL_REPLY, {
-							setChannelName: channelOptionName,
-							targetChannelId: targetChannelId,
-							reason: permissionChecking
-						})
-					)
-				);
-				continue;
-			}
-			const preChannelId = myCache.myGet('MentorshipConfig')[guildId].menteeChannel;
-
-			if (preChannelId && preChannelId !== targetChannel.id) {
-				const preChannel = interaction.guild.channels.cache.get(
-					preChannelId
-				) as TextChannel;
-
-				await stickyMsgHandler(targetChannel, StickyMessageType.Mentorship, preChannel);
-			} else {
-				await stickyMsgHandler(targetChannel, StickyMessageType.Mentorship);
-			}
+			currentConfig.playgroundChannelMsgId = result.value.id;
 		}
 
 		successReplyArray.push(
@@ -539,18 +568,28 @@ async function _handleChannelSetting(
 	}
 
 	if (successReplyArray.length !== 0) {
-		await prisma.mentorship.update({
-			where: {
-				discordId: process.env.GUILDID
-			},
-			data: {
-				...currentConfig
-			}
-		});
+		const result = await ResultAsync.fromPromise(
+			prisma.mentorship.update({
+				where: {
+					discordId: process.env.GUILDID
+				},
+				data: {
+					...currentConfig
+				}
+			}),
+			(err: Error) => err
+		).map(() =>
+			myCache.mySet('MentorshipConfig', {
+				[guildId]: currentConfig
+			})
+		);
 
-		myCache.mySet('MentorshipConfig', {
-			[guildId]: currentConfig
-		});
+		if (result.isErr()) {
+			return interaction.followUp({
+				content:
+					'Sorry, error occurs when updating mentorship configuration. Please try again.'
+			});
+		}
 	}
 
 	const successReply = successReplyArray.reduce((pre, cur) => {
@@ -566,32 +605,121 @@ async function _handleChannelSetting(
 	});
 }
 
-async function _initPlaygroundChannel(targetChannel: TextChannel): Promise<Result<null, Error>> {
-	try {
-		const { guildId } = targetChannel;
-		const currentEpoch = myCache.myGet('CurrentEpoch')?.[guildId];
-		const msg = await targetChannel.send({
+export function getPlaygroundChannel(guild: Guild): Result<TextChannel, null> {
+	if (!myCache.myHas('MentorshipConfig')) return err(null);
+	const { playgroundChannelMsgId, playgroundChannel: playgroundChannelId } =
+		myCache.myGet('MentorshipConfig')[guild.id];
+
+	if (!playgroundChannelId || !playgroundChannelMsgId) return err(null);
+	const playgroundChannel = guild.channels.cache.get(playgroundChannelId) as TextChannel;
+
+	if (!playgroundChannel) return err(null);
+	if (checkTextChannelPermission(playgroundChannel, guild.members.me.id)) return err(null);
+	return ok(playgroundChannel);
+}
+
+export function initPlaygroundChannel(
+	targetChannel: TextChannel
+): ResultAsync<Message<boolean>, Error> {
+	const { guildId } = targetChannel;
+	const currentEpoch = myCache.myGet('CurrentEpoch')?.[guildId];
+	const mentorshipConfig = myCache.myGet('MentorshipConfig')?.[guildId];
+
+	return ResultAsync.fromPromise(
+		prisma.$transaction([
+			prisma.mentor.count(),
+			prisma.mentee.count(),
+			prisma.reward.aggregate({
+				where: {
+					epochId: currentEpoch?.id,
+					discordId: guildId
+				},
+				_sum: {
+					claimedMins: true
+				}
+			}),
+			prisma.reward.aggregateRaw({
+				pipeline: [
+					{ $match: { isConfirmed: true } },
+					{
+						$group: {
+							_id: {
+								mentorId: '$mentorId',
+								menteeId: '$menteeId',
+								epochId: '$epochId'
+							},
+							claimedMins: { $sum: '$claimedMins' },
+							count: { $sum: 1 }
+						}
+					},
+					{
+						$group: {
+							_id: { mentorId: '$_id.mentorId', menteeId: '$_id.menteeId' },
+							totalClaimedMins: { $sum: '$claimedMins' },
+							avgClaimedMinsPerEpoch: { $avg: '$claimedMins' }
+						}
+					},
+					{
+						$project: {
+							_id: 0,
+							mentorId: '$_id.mentorId',
+							menteeId: '$_id.menteeId',
+							totalClaimedMins: 1,
+							totalCode: {
+								$multiply: ['$totalClaimedMins', 60]
+							},
+							avgClaimedMinsPerEpoch: 1
+						}
+					}
+				]
+			}) as unknown as Prisma.PrismaPromise<
+				Array<{
+					totalClaimedMins: number;
+					avgClaimedMinsPerEpoch: number;
+					totalCode: number;
+					mentorId: string;
+					menteeId: string;
+				}>
+			>
+		]),
+		(err: Error) => err
+	).map(([mentorNo, menteeNo, confirmedMins, leaderboardValue]) => {
+		return targetChannel.send({
+			content: sprintf(COMMAND_CONTENT.MENTORSHIP_PLAYGROUND_EMBEDD_TEMPLATE, {
+				epochInformation: isEpochEnd()
+					? 'Waiting for epoch start.'
+					: `<t:${currentEpoch.startTimestamp}> => <t:${currentEpoch.endTimestamp}>`,
+				confirmedMins: confirmedMins._sum.claimedMins ?? 0,
+				mentorNo,
+				menteeNo,
+				confirmedCode: mentorshipConfig.tokenPerMin * confirmedMins._sum.claimedMins
+			}),
 			embeds: [
-				new EmbedBuilder()
-					.setTitle('Mentorship Dashboard')
-					.setDescription(
-						`Current Epoch: ${
-							myCache.myHas('CurrentEpoch')
-								? `<t:${Math.floor(
-										currentEpoch.startTimestamp.getTime() / 1000
-								  )}:f> => <t:${Math.floor(
-										currentEpoch.endTimestamp.getTime() / 1000
-								  )}:f>`
-								: `Waiting to start...`
-						}\nTotal confirmed mins: \`0\` mins\nTotal CODE to be distributed: \`0\` $CODE\nTotal Actice Mentors in this epoch: \`0\`\nTotal Actice Mentees in this epoch: \`0\``
+				new EmbedBuilder().setTitle('Mentorship Dashboard').setDescription(
+					leaderboardValue.reduce(
+						(
+							acc,
+							{
+								totalClaimedMins,
+								avgClaimedMinsPerEpoch,
+								totalCode,
+								menteeId,
+								mentorId
+							}
+						) => {
+							return `${acc}<@${mentorId}>, <@${menteeId}>, ${avgClaimedMinsPerEpoch.toFixed(
+								2
+							)}, ${totalClaimedMins}, ${totalCode}\n`;
+						},
+						'Mentor, Mentee, Avg Claimed Mins Per Epoch, Total Claimed Mins, Total Code\n'
 					)
-					.setThumbnail(targetChannel.guild.iconURL())
+				)
 			],
 			components: [
 				new ActionRowBuilder<ButtonBuilder>().addComponents([
 					new ButtonBuilder()
 						.setCustomId(ButtonCustomIdEnum.ClaimMentorEffort)
-						.setLabel('Claim Teaching Period')
+						.setLabel('Claim Working Period')
 						.setStyle(ButtonStyle.Primary)
 						.setEmoji('⏲️'),
 					new ButtonBuilder()
@@ -599,33 +727,22 @@ async function _initPlaygroundChannel(targetChannel: TextChannel): Promise<Resul
 						.setLabel('Confirm Mentor Efforts')
 						.setStyle(ButtonStyle.Secondary)
 						.setEmoji('✅')
+				]),
+				new ActionRowBuilder<ButtonBuilder>().addComponents([
+					new ButtonBuilder()
+						.setCustomId(ButtonCustomIdEnum.MentorDataShare)
+						.setLabel('Mentor Privacy Setting')
+						.setStyle(ButtonStyle.Danger)
+						.setEmoji('🔏'),
+					new ButtonBuilder()
+						.setCustomId(ButtonCustomIdEnum.LeaderboardStatistics)
+						.setLabel('Leaderboard Detail')
+						.setStyle(ButtonStyle.Success)
+						.setEmoji('📖')
 				])
 			]
 		});
-
-		await prisma.mentorship.update({
-			where: {
-				discordId: guildId
-			},
-			data: {
-				playgroundChannelPinnedMsgId: msg.id
-			}
-		});
-		myCache.mySet('MentorshipConfig', {
-			[guildId]: {
-				...myCache.myGet('MentorshipConfig')[guildId],
-				playgroundChannelPinnedMsgId: msg.id
-			}
-		});
-		return Result.Ok(null);
-	} catch (e: unknown) {
-		if (e instanceof Error) {
-			logger.info(e);
-			return Result.Err(e);
-		}
-		logger.error(e);
-		return Result.Err(new Error('Unknown error happned.'));
-	}
+	});
 }
 
 async function _handleTokenReward(
@@ -677,20 +794,6 @@ function _readCurrentConfig(interaction: ExtendedCommandInteration) {
 			value: currentConfig.tokenPerMin.toString()
 		},
 		{
-			name: 'Mentor Channel',
-			value: currentConfig.mentorChannel
-				? `<#${currentConfig.mentorChannel}>`
-				: '`Unavailable`',
-			inline: true
-		},
-		{
-			name: 'Mentee Channel',
-			value: currentConfig.menteeChannel
-				? `<#${currentConfig.menteeChannel}>`
-				: '`Unavailable`',
-			inline: true
-		},
-		{
 			name: 'Playground Channel',
 			value: currentConfig.playgroundChannel
 				? `<#${currentConfig.playgroundChannel}>`
@@ -709,81 +812,51 @@ function _readCurrentConfig(interaction: ExtendedCommandInteration) {
 	});
 }
 
-async function _addPair(inform: MentorshipUserInform): Promise<Result<null, Error>> {
-	if (!inform.mentor) {
-		return Result.Err(
-			new Error('Sorry, you have to choose one menter before you confirm this pair.')
-		);
-	}
-
-	if (inform.mentees.length === 0) {
-		return Result.Err(
-			new Error('Sorry, you have to choose at least one mentee before you confirm this pair.')
-		);
-	}
-
-	if (inform.mentees.map((mentee) => mentee.id).includes(inform.mentor.id)) {
-		return Result.Err(
-			new Error(`Sorry, <@${inform.mentor.id}> cannot be mentor and mentee at the same time.`)
-		);
-	}
-
+function addPair(inform: MentorshipUserInform): ResultAsync<null, Error> {
 	const discordId = process.env.GUILDID;
 	const mentorId = inform.mentor.id;
 	const mentorName = inform.mentor.displayName;
-	const results = await Promise.allSettled(
-		inform.mentees.map((mentee) =>
-			prisma.mentee.upsert({
+
+	// Update mentee and mentor
+	return ResultAsync.fromPromise(
+		prisma.$transaction([
+			prisma.mentor.upsert({
 				create: {
 					discordId,
-					name: mentee.displayName,
-					id: mentee.id,
-					mentorName,
-					mentorId
+					menteesRef: inform.mentees.map((mentee) => mentee.id),
+					name: mentorName,
+					id: mentorId
 				},
 				where: {
-					id: mentee.id
+					id: mentorId
 				},
 				update: {
-					name: mentee.displayName,
-					mentorName,
-					mentorId
+					menteesRef: inform.mentees.map((mentee) => mentee.id),
+					name: mentorName
 				}
-			})
-		)
-	);
-	const errors = results.filter((value) => value.status === 'rejected');
-
-	if (errors.length !== 0) {
-		logger.error(errors[0]);
-		return Result.Err(
-			new Error('Sorry, failed to update data. Please report this to the admin.')
-		);
-	}
-
-	try {
-		await prisma.mentor.upsert({
-			create: {
-				discordId,
-				menteesRef: inform.mentees.map((mentee) => mentee.id),
-				name: mentorName,
-				id: mentorId
-			},
-			where: {
-				id: mentorId
-			},
-			update: {
-				menteesRef: inform.mentees.map((mentee) => mentee.id),
-				name: mentorName
-			}
-		});
-		return Result.Ok(null);
-	} catch (error) {
-		logger.error(error);
-		return Result.Err(
-			new Error('Sorry, failed to update data.  Please report this to the admin.')
-		);
-	}
+			}),
+			...inform.mentees.map((mentee) =>
+				prisma.mentee.upsert({
+					create: {
+						discordId,
+						name: mentee.displayName,
+						id: mentee.id,
+						mentorName,
+						mentorId
+					},
+					where: {
+						id: mentee.id
+					},
+					update: {
+						name: mentee.displayName,
+						mentorName,
+						mentorId
+					}
+				})
+			)
+		]),
+		(err: Error) => err
+	).map(() => null);
 }
 
 async function _fetchMentor(id: string, discordId: string): Promise<InteractionReplyOptions> {

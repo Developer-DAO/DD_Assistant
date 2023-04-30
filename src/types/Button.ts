@@ -22,7 +22,9 @@ export enum ButtonCustomIdEnum {
 	EndTownHall = 'end',
 	GetTHAttenderNumber = 'number',
 	ClaimMentorEffort = 'claim',
-	ConfirmMentorEffort = 'confirm'
+	ConfirmMentorEffort = 'confirm',
+	MentorDataShare = 'mentor_data_share',
+	LeaderboardStatistics = 'leaderboard_statistics'
 }
 
 export enum ButtonCollectorCustomId {
@@ -30,7 +32,12 @@ export enum ButtonCollectorCustomId {
 	Previous = 'previous',
 	First = 'first',
 	Last = 'last',
-	PairConfirm = 'pair_confirm'
+	PairConfirm = 'pair_confirm',
+	MentorDataShareChange = 'mentor_data_share_change',
+	ConfirmEffortYes = 'confirm_effort_yes',
+	ConfirmEffortMore = 'confirm_effort_more',
+	ConfirmEffortLess = 'confirm_effort_less',
+	ConfirmEffortMessage = 'confirm_effort_message'
 }
 export interface ButtonType {
 	customIds: Array<ButtonCustomIdEnum>;

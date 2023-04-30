@@ -21,47 +21,6 @@ import {
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 
-type NumericalProperty =
-	| 'AWAIT_TIMEOUT'
-	| 'AUTOCOMPLETE_OPTION_LENGTH'
-	| 'ONBOARDING_DURATION'
-	| 'EMBED_CONTENT_LIMIT'
-	| 'SCAN_VIEW_DURATION'
-	| 'ARCHIVE_CHANNEL_CHILD_LIMIT'
-	| 'ARCHIVE_EXPIRY_TIME'
-	| 'AUTO_ARCHIVE_INTERVL'
-	| 'EMBED_PER_MSG'
-	| 'AUTO_POST_SCAN_INTERVAL'
-	| 'BIRTHDAY_SCAN_INTERVAL'
-	| 'ADD_PAIR_INTERVAL';
-type ErroProperty = 'COMMON' | 'GRAPHQL' | 'INTERACTION' | 'BUTTON' | 'AUTO' | 'MODAL' | 'MENU';
-type CommandContentPropery =
-	| 'CHANNEL_SETTING_FAIL_REPLY'
-	| 'CHANNEL_SETTING_SUCCESS_REPLY'
-	| 'INTRODUCTION'
-	| 'WOMEN_INTRODUCTION'
-	| 'ONBOARDING'
-	| 'ONBOARDING_END'
-	| 'WOMENVIBES'
-	| 'WOMENVIBES_GOINGON'
-	| 'WOMENVIBES_END'
-	| 'WOMENVIBES_CALL_EVENT_NAME'
-	| 'ONBOARDING_GOINGON'
-	| 'THREAD_WELCOME_MSG'
-	| 'WELCOME_THREAD_NAME'
-	| 'ONBOARDING_CALL_EVENT_NAME'
-	| 'WOMEN_THREAD_WELCOME_MSG'
-	| 'CHANNEL_WITHOUT_PARENT_PARENTID'
-	| 'CHANNEL_WITHOUT_PARENT_PARENTNAME'
-	| 'DISCORD_MSG'
-	| 'NOTIFICATION_MSG';
-type LinkProperty = 'DISCORD_MSG' | 'HASHNODE_API' | 'BIRTHDAY_PIC';
-
-type Numerical = Readonly<Record<NumericalProperty, number>>;
-type InternalError = Readonly<Record<ErroProperty, string>>;
-type CommandContent = Readonly<Record<CommandContentPropery, string>>;
-type LINK = Readonly<Record<LinkProperty, string>>;
-
 type ResType = {
 	channel: string;
 	description: string;
@@ -73,7 +32,7 @@ type ResType = {
 	emoji: string;
 };
 
-export const NUMBER: Numerical = {
+export const NUMBER = {
 	AWAIT_TIMEOUT: 15 * 1000,
 	AUTOCOMPLETE_OPTION_LENGTH: 25,
 	ONBOARDING_DURATION: 60 * 60,
@@ -85,10 +44,13 @@ export const NUMBER: Numerical = {
 	EMBED_PER_MSG: 10,
 	AUTO_POST_SCAN_INTERVAL: 90 * 60 * 1000,
 	BIRTHDAY_SCAN_INTERVAL: 60 * 60 * 1000,
-	ADD_PAIR_INTERVAL: 4 * 60 * 1000
+	ADD_PAIR_INTERVAL_IN_SEC: 2 * 60,
+	ADD_PAIR_IDLE_INTERVAL_IN_SEC: 1 * 60,
+	MENTORSHIP_STATISTICS_INTERVAL_IN_SEC: 2 * 60,
+	MENTORSHIP_DATA_SHARE_INTERVAL_IN_SEC: 2 * 60
 };
 
-export const ERROR_REPLY: InternalError = {
+export const ERROR_REPLY = {
 	GRAPHQL: 'Error occured when running `%(action)s`: %(errorMessage)s',
 	COMMON: 'Unknown Error, please report this to the admin',
 	INTERACTION:
@@ -99,19 +61,11 @@ export const ERROR_REPLY: InternalError = {
 	MENU: 'User: %(userName)s Guild: %(guildName)s Error: %(errorName)s occurs when executing %(menuName)s menu. Msg: %(errorMsg)s Stack: %(errorStack)s.'
 };
 
-export const LINK: LINK = {
+export const LINK = {
 	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
 	HASHNODE_API: 'https://api.hashnode.com/',
 	BIRTHDAY_PIC:
 		'https://cdn.discordapp.com/attachments/1055685228443750410/1055688407411601518/birthday-cake-with-happy-birthday-banner-royalty-free-image-1656616811.png'
-};
-
-export const ButtonCollectorCustomIdRecord: Readonly<Record<ButtonCollectorCustomId, string>> = {
-	first: '',
-	last: '',
-	previous: '',
-	next: '',
-	pair_confirm: ''
 };
 
 export const DefaultGuildInform: GuildInform = {
@@ -159,11 +113,10 @@ export const DefaultChannelScanResult: GuildChannelScan = {};
 export const DefaultMentorshipConfig: Mentorship = {
 	adminRole: process.env.GUILDID,
 	discordId: process.env.GUILDID,
-	mentorChannel: MYNULL,
-	menteeChannel: MYNULL,
 	playgroundChannel: MYNULL,
-	playgroundChannelPinnedMsgId: MYNULL,
-	tokenPerMin: 0
+	playgroundChannelMsgId: MYNULL,
+	tokenPerMin: 0,
+	isEpochStarted: false
 };
 
 export const CACHE_KEYS: Readonly<Record<keyof CacheType, keyof CacheType>> = {
@@ -209,7 +162,7 @@ interface ExtendedApplicationCommandOptionChoiceData extends ApplicationCommandO
 	value: CommandNameEmun;
 }
 
-export const COMMAND_CONTENT: CommandContent = {
+export const COMMAND_CONTENT = {
 	ONBOARDING_CALL_EVENT_NAME: 'Group Onboarding Call',
 	WOMENVIBES_CALL_EVENT_NAME: 'D_D Women Vibes',
 	CHANNEL_SETTING_FAIL_REPLY:
@@ -241,7 +194,15 @@ export const COMMAND_CONTENT: CommandContent = {
 	CHANNEL_WITHOUT_PARENT_PARENTNAME: 'No Category Name',
 	DISCORD_MSG: 'https://discord.com/channels/%(guildId)s/%(channelId)s/%(messageId)s',
 	NOTIFICATION_MSG:
-		'Hi, D_Ds in <#%(channelId)s>\n\nAs there has been no action taken on our request to add a description to this channel, we have interpreted this as the channel is not of material importance to the server. Therefore it has been queued for archiving.\n\nChannels that do not have a description, fall out of compliance with the new standards being established by the Server Architecture Team — as it makes it difficult for Developer DAO members to be easily navigate our Discord, and find information quickly.\n\n**We are going to archive this channel <t:%(timestamp)s:R> from this notice being sent out ⚠️**\n\nIf you believe that this channel is important and should remain, please let us know in the <#993496711798456380> channel, by creating a thread using the format below:\n\n**Thread Name**: `re [insert channel name]`\n\nThanks for your cooperation! 🧰'
+		'Hi, D_Ds in <#%(channelId)s>\n\nAs there has been no action taken on our request to add a description to this channel, we have interpreted this as the channel is not of material importance to the server. Therefore it has been queued for archiving.\n\nChannels that do not have a description, fall out of compliance with the new standards being established by the Server Architecture Team — as it makes it difficult for Developer DAO members to be easily navigate our Discord, and find information quickly.\n\n**We are going to archive this channel <t:%(timestamp)s:R> from this notice being sent out ⚠️**\n\nIf you believe that this channel is important and should remain, please let us know in the <#993496711798456380> channel, by creating a thread using the format below:\n\n**Thread Name**: `re [insert channel name]`\n\nThanks for your cooperation! 🧰',
+	MENTORSHIP_PLAYGROUND_CONTENT_TEMPLATE:
+		'**Epoch**: <t:%(startTimestamp)s> => <t:%(endTimestamp)s>\n**Mentor**: <@%(mentorId)s>\n**Claimed Efforts**: `%(claimedMins)s` mins',
+	CONFIRM_EFFORT_CONTENT_TEMPLATE:
+		'Please make sure the effort is correct and click the button below. Note that these buttons wil expire <t:%(expire)s:R>',
+	MENTORSHIP_PLAYGROUND_EMBEDD_TEMPLATE:
+		'**Current Epoch**: %(epochInformation)s\n**Confirmed Mins**: `%(confirmedMins)s` mins\n**Confirmed CODE**: `%(confirmedCode)s`\n**Active Mentors**: `%(mentorNo)s`\n**Active Mentees**: `%(menteeNo)s`',
+	MENTORSHIP_ADD_PAIR_INTRODUCTION: `Please select one mentor and corresponding mentees. After you finish, please click the button to confirm your choice. Please note that this message will expire when idle reaches ${NUMBER.ADD_PAIR_IDLE_INTERVAL_IN_SEC} secs or <t:%(expire)s:R>. Once it expires, you have to run the command again.`,
+	MENTORSHIP_STATISTICS_INTRODUCTION: 'Please select a mentor you would like to see the statistics of. Note that the following menus will expire <t:%(expire)s:R>.'
 };
 
 const OnboardingStickyMsg: Readonly<MessageReplyOptions> = {
@@ -678,7 +639,5 @@ export enum MONTH {
 }
 
 export enum MentorshipChannelOptionName {
-	Playground = 'playground',
-	Mentor = 'mentor',
-	Mentee = 'mentee'
+	Playground = 'playground'
 }

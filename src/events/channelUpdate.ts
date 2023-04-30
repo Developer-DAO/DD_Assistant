@@ -21,7 +21,7 @@ export default new Event(
 		newChannel: DMChannel | NonThreadGuildBasedChannel
 	) => {
 		// todo handle this case in the future
-		if (!myCache.myHasesExcept(['CurrentEpoch'])) return;
+		if (!myCache.myHasAll()) return;
 		if (oldChannel.type === ChannelType.DM || newChannel.type === ChannelType.DM) return;
 
 		const guildId = newChannel.guild.id;

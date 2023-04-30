@@ -14,6 +14,7 @@ import {
 import glob from 'glob';
 import { promisify } from 'util';
 
+import { epochUpdate } from '../cron/cron';
 import { getPosts } from '../graph/GetUser.query';
 import { prisma } from '../prisma/prisma';
 import { AutoType } from '../types/Auto';
@@ -32,6 +33,7 @@ import {
 	NUMBER,
 	StickyMsgTypeToMsg
 } from '../utils/const';
+import dayjs from '../utils/dayjs';
 import { logger } from '../utils/logger';
 import {
 	autoArchive,
@@ -39,7 +41,8 @@ import {
 	checkTextChannelPermission,
 	checkTextChannelPermissionForStickyMsg,
 	deSerializeChannelScan,
-	getNextBirthday
+	getNextBirthday,
+	startOfIsoWeekUnix
 } from '../utils/util';
 import { myCache } from './Cache';
 import { Event } from './Event';
@@ -156,15 +159,9 @@ export class MyClient extends Client {
 
 		this.once('ready', async () => {
 			await this.guilds.fetch();
+			await this.guilds.cache.get(process.env.GUILDID)?.commands.fetch();
 			await this._cacheInit();
 			await this._loadSticky();
-			setInterval(async () => {
-				try {
-					await prisma.$connect();
-				} catch (error) {
-					logger.error(error);
-				}
-			}, 60 * 1000);
 			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
 			setInterval(this._fetchHashNodePost, NUMBER.AUTO_POST_SCAN_INTERVAL, this);
 			setInterval(this._birthdayScan, NUMBER.BIRTHDAY_SCAN_INTERVAL, this);
@@ -268,21 +265,36 @@ export class MyClient extends Client {
 			}
 			this.table.addRow('MentorshipConfig', '✅ Fetched and cached');
 
-			const currentEpoch = await prisma.epoch.findFirst({
-				orderBy: {
-					startTimestamp: 'desc'
-				},
-				where: {
-					discordId
-				}
-			});
+			const { isEpochStarted } = myCache.myGet('MentorshipConfig')[discordId];
 
-			if (currentEpoch) {
+			if (isEpochStarted) {
+				let currentEpoch = await prisma.epoch.findFirst({
+					orderBy: {
+						startTimestamp: 'desc'
+					},
+					where: {
+						discordId
+					}
+				});
+				const now = dayjs.utc().unix();
+
+				if (Number(currentEpoch.endTimestamp) < now) {
+					currentEpoch = await prisma.epoch.create({
+						data: {
+							discordId,
+							startTimestamp: startOfIsoWeekUnix().toString(),
+							endTimestamp: epochUpdate.getNextEpochEndUnixTime().toString()
+						}
+					});
+				}
+
 				myCache.mySet('CurrentEpoch', {
 					[discordId]: currentEpoch
 				});
-				this.table.addRow('Epoch', '✅ Fetched and cached');
+			} else {
+				myCache.mySet('CurrentEpoch', {});
 			}
+			this.table.addRow('Epoch', '✅ Fetched and cached');
 
 			const stickRecords = await prisma.stickyInform.findFirst({
 				where: {
@@ -374,7 +386,9 @@ export class MyClient extends Client {
 			if (message) {
 				await message.delete();
 			}
-			stickyRecords[channelId].messageId = (await channel.send(StickyMsgTypeToMsg[messageType])).id;
+			stickyRecords[channelId].messageId = (
+				await channel.send(StickyMsgTypeToMsg[messageType])
+			).id;
 		}
 		await Promise.all(
 			Object.values(stickyRecords).map((value) =>
