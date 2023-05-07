@@ -9,7 +9,6 @@ import { Event } from '../structures/Event';
 export default new Event('messageDelete', async (message: Message | PartialMessage) => {
 	const result = getPlaygroundChannel(message.guild);
 
-	console.log(result);
 	if (result.isErr()) return;
 	const guildId = message.guildId;
 

@@ -35,8 +35,6 @@ export enum ButtonCollectorCustomId {
 	PairConfirm = 'pair_confirm',
 	MentorDataShareChange = 'mentor_data_share_change',
 	ConfirmEffortYes = 'confirm_effort_yes',
-	ConfirmEffortMore = 'confirm_effort_more',
-	ConfirmEffortLess = 'confirm_effort_less',
 	ConfirmEffortMessage = 'confirm_effort_message'
 }
 export interface ButtonType {

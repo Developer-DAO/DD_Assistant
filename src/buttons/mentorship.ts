@@ -8,8 +8,10 @@ import {
 	InteractionReplyOptions,
 	ModalBuilder,
 	StringSelectMenuBuilder,
+	TextChannel,
 	TextInputBuilder,
-	TextInputStyle
+	TextInputStyle,
+	userMention
 } from 'discord.js';
 import { isFinite } from 'lodash';
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
@@ -101,9 +103,7 @@ export default new Button({
 				await interaction.editReply({
 					content: getClaimEffortConent(intervalInSec)
 				});
-				selectInteraction.showModal(
-					getClaimEfforModal(interaction.guild.members.cache.get(menteeId)?.displayName)
-				);
+				selectInteraction.showModal(getClaimEfforModal());
 				const result = await ResultAsync.fromPromise(
 					selectInteraction.awaitModalSubmit({
 						time: 1 * 60 * 1000
@@ -233,7 +233,6 @@ export default new Button({
 			const rewards = rewardResult.value.sort(
 				(a, b) => Number(b.epochId) - Number(a.epochId)
 			);
-			// todo check if epoch is ordered
 			const epochResult = await ResultAsync.fromPromise(
 				prisma.epoch.findMany({
 					where: {
@@ -254,14 +253,17 @@ export default new Button({
 				});
 			}
 			const embedArray = rewards.map((reward, index) =>
-				new EmbedBuilder().setTitle('Effort Confirm Card').setDescription(
-					sprintf(COMMAND_CONTENT.MENTORSHIP_PLAYGROUND_CONTENT_TEMPLATE, {
-						startTimestamp: epochResult.value[index].startTimestamp,
-						endTimestamp: epochResult.value[index].endTimestamp,
-						mentorId: reward.mentorId,
-						claimedMins: reward.claimedMins
-					})
-				)
+				new EmbedBuilder()
+					.setTitle('Effort Confirm Card')
+					.setDescription(
+						sprintf(COMMAND_CONTENT.MENTORSHIP_PLAYGROUND_CONTENT_TEMPLATE, {
+							startTimestamp: epochResult.value[index].startTimestamp,
+							endTimestamp: epochResult.value[index].endTimestamp,
+							mentorId: reward.mentorId,
+							claimedMins: reward.claimedMins
+						})
+					)
+					.setFooter({ text: epochResult.value[index].id })
 			);
 			const intervalInSec = 1 * 60;
 
@@ -277,127 +279,116 @@ export default new Button({
 			});
 
 			collector.on('collect', async (btnInteraction) => {
-				await btnInteraction.deferUpdate();
-				switch (btnInteraction.customId) {
-					case ButtonCollectorCustomId.Next:
-						page++;
-						break;
-					case ButtonCollectorCustomId.Previous:
-						page--;
-						break;
-					case ButtonCollectorCustomId.First:
-						page = 0;
-						break;
-					case ButtonCollectorCustomId.Last:
-						page = embedArray.length - 1;
-						break;
-					case ButtonCollectorCustomId.ConfirmEffortMore:
-					case ButtonCollectorCustomId.ConfirmEffortLess: {
-						const dmSendResult = await dmUser(
-							btnInteraction.guild.members.cache.get(rewards[page].mentorId),
-							btnInteraction.customId === ButtonCollectorCustomId.ConfirmEffortMore
-								? `Your mentee <@${rewards[page].menteeId}> did not agree with your claimed effort. Please claim more efforts!`
-								: `Your mentee <@${rewards[page].menteeId}> did not agreed with your claimed effort. Please claim less efforts!`
-						);
-
-						if (dmSendResult.isErr()) {
-							btnInteraction.followUp({
-								content: dmSendResult.error.message,
-								ephemeral: true
-							});
-							return;
-						}
-						await btnInteraction.followUp({
-							content: `Successfully sent a DM to <@${rewards[page].mentorId}>!`,
-							ephemeral: true
-						});
-						break;
-					}
-					case ButtonCollectorCustomId.ConfirmEffortMessage: {
-						const modal = new ModalBuilder()
-							.setCustomId(ModalCollectorCustomIdEnum.SendMessageToMentor)
-							.setTitle(`Leave message to mentor`)
-							.addComponents(
-								new ActionRowBuilder<TextInputBuilder>().addComponents(
-									new TextInputBuilder()
-										.setCustomId('message')
-										.setLabel('Input a message to your mentor')
-										.setStyle(TextInputStyle.Short)
-										.setRequired(true)
-								)
-							);
-
-						await btnInteraction.showModal(modal);
-						const result = await ResultAsync.fromPromise(
-							btnInteraction.awaitModalSubmit({
-								time: 1 * 60 * 1000
-							}),
-							(err: Error) => err
-						);
-
-						if (result.isErr()) {
-							interaction.editReply({
-								content:
-									'Sorry, error occurred when receiving your message. Please try again.'
-							});
-							return;
-						}
-						const message = result.value.fields.getTextInputValue('message');
-
-						await result.value.deferReply({ ephemeral: true });
-						const dmSendResult = await dmUser(
-							btnInteraction.guild.members.cache.get(rewards[page].mentorId),
-							`Your mentee <@${rewards[page].menteeId}> left a message for you.\nMessage: ${message}`
-						);
-
-						if (dmSendResult.isErr()) {
-							result.value.followUp({
-								content: dmSendResult.error.message,
-								ephemeral: true
-							});
-							return;
-						}
-						await result.value.followUp({
-							content: `Successfully sent a DM to <@${rewards[page].mentorId}>!`,
-							ephemeral: true
-						});
-						break;
-					}
-					case ButtonCollectorCustomId.ConfirmEffortYes: {
-						const confirmResult = await ResultAsync.fromPromise(
-							prisma.reward.update({
-								where: {
-									id: rewards[page].id
-								},
-								data: {
-									isConfirmed: true
-								}
-							}),
-							() => new MongoDbError()
-						).andThen(() =>
-							dmUser(
-								btnInteraction.guild.members.cache.get(rewards[page].id),
-								`Your mentee <@${rewards[page].menteeId}> has confirmed your effort! You have earned \`${rewards[page].claimedMins}\` minutes!`
+				// Reason move this branch to the top
+				// You cannot deferUpdate or deferReply when you wanna showModal
+				if (btnInteraction.customId === ButtonCollectorCustomId.ConfirmEffortMessage) {
+					const modal = new ModalBuilder()
+						.setCustomId(ModalCollectorCustomIdEnum.SendMessageToMentor)
+						.setTitle(`Leave message to mentor`)
+						.addComponents(
+							new ActionRowBuilder<TextInputBuilder>().addComponents(
+								new TextInputBuilder()
+									.setCustomId('message')
+									.setLabel('Input a message to your mentor or leave blank')
+									.setStyle(TextInputStyle.Short)
 							)
 						);
 
-						if (confirmResult.isErr()) {
-							btnInteraction.followUp({
-								content: confirmResult.error.message,
-								ephemeral: true
-							});
-						} else {
-							confirmedPage.push(page);
-							embedArray[page].setTitle('[Confirmed] Effort Confirm Card');
-							await btnInteraction.followUp({
-								content: 'Successfully confirmed your effort!',
-								ephemeral: true
-							});
-							collector.resetTimer();
-						}
+					await btnInteraction.showModal(modal);
+					const result = await ResultAsync.fromPromise(
+						btnInteraction.awaitModalSubmit({
+							time: 1 * 60 * 1000
+						}),
+						(err: Error) => err
+					);
+
+					if (result.isErr()) {
+						interaction.editReply({
+							content:
+								'Sorry, error occurred when receiving your message. Please try again.'
+						});
 						return;
 					}
+					const message = result.value.fields.getTextInputValue('message');
+
+					await result.value.deferReply({ ephemeral: true });
+					const dmSendResult = await dmUser(
+						btnInteraction.guild.members.cache.get(rewards[page].mentorId),
+						`Your mentee <@${
+							rewards[page].menteeId
+						}> refused your claimed working efforts${
+							message ? ` and left a message for you:\n${message}` : '.'
+						}`
+					);
+
+					if (dmSendResult.isErr()) {
+						await result.value.followUp({
+							content: dmSendResult.error.message,
+							ephemeral: true
+						});
+						await logClosedDM(
+							btnInteraction.guild.channels.cache.get(
+								myCache.myGet('MentorshipConfig')[guildId].notificationChannel
+							) as TextChannel,
+							rewards[page].menteeId,
+							rewards[page].mentorId
+						);
+						return;
+					}
+					await result.value.followUp({
+						content: `Successfully sent a DM to <@${rewards[page].mentorId}>!`,
+						ephemeral: true
+					});
+				} else {
+					await btnInteraction.deferUpdate();
+					switch (btnInteraction.customId) {
+						case ButtonCollectorCustomId.Next:
+							page++;
+							break;
+						case ButtonCollectorCustomId.Previous:
+							page--;
+							break;
+						case ButtonCollectorCustomId.First:
+							page = 0;
+							break;
+						case ButtonCollectorCustomId.Last:
+							page = embedArray.length - 1;
+							break;
+						case ButtonCollectorCustomId.ConfirmEffortYes: {
+							const confirmResult = await ResultAsync.fromPromise(
+								prisma.reward.update({
+									where: {
+										id: rewards[page].id
+									},
+									data: {
+										isConfirmed: true
+									}
+								}),
+								() => new MongoDbError()
+							);
+
+							if (confirmResult.isErr()) {
+								btnInteraction.followUp({
+									content: confirmResult.error.message,
+									ephemeral: true
+								});
+							} else {
+								confirmedPage.push(page);
+								embedArray[page].setTitle('[Confirmed] Effort Confirm Card');
+								await btnInteraction.followUp({
+									content: 'Successfully confirmed your effort!',
+									ephemeral: true
+								});
+								await dmUser(
+									btnInteraction.guild.members.cache.get(rewards[page].id),
+									`Your mentee <@${rewards[page].menteeId}> has confirmed your effort! You have earned \`${rewards[page].claimedMins}\` minutes!`
+								);
+								collector.resetTimer();
+							}
+						}
+					}
 				}
+
 				await interaction.editReply(
 					getConfirmEffortReply(
 						intervalInSec,
@@ -485,7 +476,12 @@ export default new Button({
 				}),
 				() => new MongoDbError()
 			).andThen((mentors) => {
-				if (mentors.length === 0) return errAsync(new Error('No mentor found.'));
+				if (mentors.length === 0)
+					return errAsync(
+						new Error(
+							'No mentor found, becasue no one shared their data or no one is a mentor in current server.'
+						)
+					);
 				return okAsync(
 					separateArray(
 						mentors.map((value) => ({
@@ -530,18 +526,30 @@ export default new Button({
 			collector.on('collect', async (menuInteraction) => {
 				await menuInteraction.deferUpdate();
 				const mentorDetailResult = await ResultAsync.fromPromise(
-					prisma.reward.groupBy({
+					prisma.mentor.findFirst({
 						where: {
-							mentorId: menuInteraction.values[0],
-							isConfirmed: true
-						},
-						by: ['epochId'],
-						_sum: {
-							claimedMins: true
+							id: menuInteraction.values[0]
 						}
 					}),
 					() => new MongoDbError()
-				);
+				).andThen((mentor) => {
+					if (!mentor) return errAsync(new Error('No mentor found.'));
+					if (!mentor.isDataShared)
+						return errAsync(new Error('This mentor did not share his/her data.'));
+					return ResultAsync.fromPromise(
+						prisma.reward.groupBy({
+							where: {
+								mentorId: menuInteraction.values[0],
+								isConfirmed: true
+							},
+							by: ['epochId'],
+							_sum: {
+								claimedMins: true
+							}
+						}),
+						() => new MongoDbError()
+					);
+				});
 
 				if (mentorDetailResult.isErr()) {
 					await menuInteraction.followUp({
@@ -611,7 +619,7 @@ function getClaimEffortConent(interval: number) {
 	}:R>`;
 }
 
-function getClaimEfforModal(menteeName: string | undefined) {
+function getClaimEfforModal() {
 	return new ModalBuilder()
 		.setTitle('Claim your effort')
 		.setCustomId(ModalCollectorCustomIdEnum.ClaimMentorEffort)
@@ -619,7 +627,6 @@ function getClaimEfforModal(menteeName: string | undefined) {
 			new ActionRowBuilder<TextInputBuilder>().addComponents([
 				new TextInputBuilder()
 					.setCustomId('claim_mins')
-					// .setLabel(`Input your working minutes for ${menteeName ?? 'Unknown user'}`)
 					.setLabel('Input your working minutes')
 					.setPlaceholder('Integer Only')
 					.setStyle(TextInputStyle.Short)
@@ -639,7 +646,6 @@ function getConfirmEffortReply(
 			expire: dayjs().unix() + intervalInSec
 		}),
 		embeds: [embed],
-		// todo Ok(Confirmed) , Less, More, Message
 		components: [
 			...(isConfirmed
 				? []
@@ -650,16 +656,6 @@ function getConfirmEffortReply(
 								.setLabel('Yes, correct')
 								.setEmoji('✅')
 								.setStyle(ButtonStyle.Success),
-							new ButtonBuilder()
-								.setCustomId(ButtonCollectorCustomId.ConfirmEffortMore)
-								.setLabel('Below My expectation')
-								.setEmoji('🤩')
-								.setStyle(ButtonStyle.Secondary),
-							new ButtonBuilder()
-								.setCustomId(ButtonCollectorCustomId.ConfirmEffortLess)
-								.setLabel('Above My expectation')
-								.setEmoji('🧐')
-								.setStyle(ButtonStyle.Danger),
 							new ButtonBuilder()
 								.setCustomId(ButtonCollectorCustomId.ConfirmEffortMessage)
 								.setLabel('Leave a Message')
@@ -733,6 +729,25 @@ function mentorIdentity(mentotId: string) {
 	).andThen((mentor) => (mentor ? okAsync(mentor) : errAsync(new MentorshipNotFoundError())));
 }
 
+function logClosedDM(notificationChannel: TextChannel | null, menteeId: string, mentorId: string) {
+	return ResultAsync.fromPromise(
+		notificationChannel.send({
+			embeds: [
+				new EmbedBuilder()
+					.setTitle('Closed DM')
+					.setDescription(
+						`${userMention(
+							mentorId
+						)} DM is closed. Please contact him/her in other ways about ${userMention(
+							menteeId
+						)} refused claimed efforts.`
+					)
+			]
+		}),
+		() => new Error('Failed to send a message to notification channel.')
+	);
+}
+
 function dmUser(targetUser: GuildMember | undefined, message: string) {
 	return targetUser
 		? ResultAsync.fromSafePromise(targetUser.createDM()).andThen((channel) =>
@@ -743,7 +758,7 @@ function dmUser(targetUser: GuildMember | undefined, message: string) {
 		  )
 		: errAsync(
 				new Error(
-					"You have confirmed your mentor's efforts but I cannot find your mentor in Discord."
+					'Your action has been executed but I cannot find your mentor in Discord, so DM is not sent.'
 				)
 		  );
 }

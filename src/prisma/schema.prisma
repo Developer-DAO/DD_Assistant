@@ -58,6 +58,7 @@ model Mentorship {
     adminRole              String  @default("")
     playgroundChannel      String  @default("")
     playgroundChannelMsgId String  @default("")
+    notificationChannel    String  @default("")
     tokenPerMin            Int     @default(0)
     isEpochStarted         Boolean @default(false)
 }

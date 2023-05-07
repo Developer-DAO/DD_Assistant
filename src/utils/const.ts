@@ -115,6 +115,7 @@ export const DefaultMentorshipConfig: Mentorship = {
 	discordId: process.env.GUILDID,
 	playgroundChannel: MYNULL,
 	playgroundChannelMsgId: MYNULL,
+	notificationChannel: MYNULL,
 	tokenPerMin: 0,
 	isEpochStarted: false
 };
@@ -639,5 +640,6 @@ export enum MONTH {
 }
 
 export enum MentorshipChannelOptionName {
-	Playground = 'playground'
+	Playground = 'playground',
+	Notification = 'notification'
 }

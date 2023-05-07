@@ -25,6 +25,6 @@ export class TimeOutError extends CustomError {
 
 export class FailSendDmError extends CustomError {
 	public constructor(userName: string) {
-		super(`Fail to send DM to ${userName}`);
+		super(`Fail to send DM to ${userName}. We have inform admin of this issue.`);
 	}
 }

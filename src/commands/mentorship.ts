@@ -75,6 +75,13 @@ export default new Command({
 							description: 'Choose a channel as a playground channel',
 							type: ApplicationCommandOptionType.Channel,
 							channelTypes: [ChannelType.GuildText]
+						},
+						{
+							name: MentorshipChannelOptionName.Notification,
+							description:
+								'Choose a channel as a notification channel to receive messages from the bot',
+							type: ApplicationCommandOptionType.Channel,
+							channelTypes: [ChannelType.GuildText]
 						}
 					]
 				},
@@ -515,7 +522,8 @@ async function _handleChannelSetting(
 		MentorshipChannelOptionName,
 		PrismaChannelProperty<Mentorship>
 	> = {
-		playground: 'playgroundChannel'
+		playground: 'playgroundChannel',
+		notification: 'notificationChannel'
 	};
 	const successReplyArray: Array<string> = [];
 	const failReplyArray: Array<string> = [];

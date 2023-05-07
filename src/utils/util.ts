@@ -1130,11 +1130,11 @@ export function isEpochEnd() {
 }
 
 export function separateArray<T>(arr: T[], numSubarrays: number): T[][] {
-	const subarrays: T[][] = Array.from({ length: numSubarrays }, () => []);
 	const subarraySize = Math.ceil(arr.length / numSubarrays);
+	const subarrays: T[][] = Array.from({ length: subarraySize }, () => []);
 
-	for (let i = 0; i < numSubarrays; i++) {
-		subarrays[i] = arr.slice(i * subarraySize, (i + 1) * subarraySize);
+	for (let i = 0; i < subarraySize; i++) {
+		subarrays[i] = arr.slice(i * numSubarrays, (i + 1) * numSubarrays);
 	}
 
 	return subarrays;

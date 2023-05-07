@@ -12,8 +12,10 @@ import {
 	UserApplicationCommandData
 } from 'discord.js';
 import glob from 'glob';
+import { ResultAsync } from 'neverthrow';
 import { promisify } from 'util';
 
+import { getPlaygroundChannel, initPlaygroundChannel } from '../commands/mentorship';
 import { epochUpdate } from '../cron/cron';
 import { getPosts } from '../graph/GetUser.query';
 import { prisma } from '../prisma/prisma';
@@ -162,6 +164,7 @@ export class MyClient extends Client {
 			await this.guilds.cache.get(process.env.GUILDID)?.commands.fetch();
 			await this._cacheInit();
 			await this._loadSticky();
+			await this._loadMentorshiconfig();
 			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
 			setInterval(this._fetchHashNodePost, NUMBER.AUTO_POST_SCAN_INTERVAL, this);
 			setInterval(this._birthdayScan, NUMBER.BIRTHDAY_SCAN_INTERVAL, this);
@@ -403,6 +406,21 @@ export class MyClient extends Client {
 			)
 		);
 		myCache.mySet('StickyInform', stickyRecords);
+	}
+
+	private async _loadMentorshiconfig() {
+		// Load Mentorship Playground
+		const guild = this.guilds.cache.get(process.env.GUILDID);
+		const playgroundChannelResult = getPlaygroundChannel(guild);
+		const pgChannelMessageId =
+			myCache.myGet('MentorshipConfig')[guild.id].playgroundChannelMsgId;
+
+		if (playgroundChannelResult.isErr()) return;
+		// Not care about the return type
+		return ResultAsync.fromPromise(
+			playgroundChannelResult.value.messages.fetch(pgChannelMessageId),
+			() => new Error('Cannot fetch playground channel message')
+		).orElse(() => initPlaygroundChannel(playgroundChannelResult.value) as any);
 	}
 
 	private async _fetchHashNodePost(client: MyClient) {
