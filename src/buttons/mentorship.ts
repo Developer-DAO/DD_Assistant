@@ -430,30 +430,35 @@ export default new Button({
 			});
 
 			collector.on('collect', async (btnInteraction) => {
-				await ResultAsync.fromSafePromise(btnInteraction.deferUpdate())
-					.andThen(() =>
-						ResultAsync.fromPromise(
-							prisma.mentor.update({
-								where: {
-									id: interaction.user.id
-								},
-								data: {
-									isDataShared: !currentStatus
-								}
-							}),
-							() => new MongoDbError()
-						)
-					)
-					.mapErr((err) =>
-						btnInteraction.followUp({
-							content: err.message,
-							ephemeral: true
-						})
-					)
-					.map((mentor) => {
+				await ResultAsync.fromPromise(
+					prisma.mentor.update({
+						where: {
+							id: interaction.user.id
+						},
+						data: {
+							isDataShared: !currentStatus
+						}
+					}),
+					() => new MongoDbError()
+				)
+					.map(async (mentor) => {
 						collector.resetTimer();
 						currentStatus = mentor.isDataShared;
-						return interaction.editReply(generateDataShareReply(currentStatus));
+						await btnInteraction.deferReply();
+						await interaction.editReply(generateDataShareReply(currentStatus));
+					})
+					.mapErr((err) => {
+						if (btnInteraction.deferred) {
+							btnInteraction.followUp({
+								content: err.message,
+								ephemeral: true
+							});
+						} else {
+							btnInteraction.reply({
+								content: err.message,
+								ephemeral: true
+							});
+						}
 					});
 			});
 			collector.on('end', (collected) => {
@@ -479,7 +484,7 @@ export default new Button({
 				if (mentors.length === 0)
 					return errAsync(
 						new Error(
-							'No mentor found, becasue no one shared their data or no one is a mentor in current server.'
+							'No mentor found, because no one shared their data or no one is a mentor in current server.'
 						)
 					);
 				return okAsync(
@@ -593,7 +598,7 @@ export default new Button({
 								mentorDetail
 									.map(
 										(value) =>
-											`Epoch ${value.epochId}: ${value._sum?.claimedMins} mins`
+											`Epoch ${value.epochId}: \`${value._sum?.claimedMins}\` mins`
 									)
 									.join('\n')
 							)
