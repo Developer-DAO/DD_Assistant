@@ -12,8 +12,11 @@ import {
 	UserApplicationCommandData
 } from 'discord.js';
 import glob from 'glob';
+import { ResultAsync } from 'neverthrow';
 import { promisify } from 'util';
 
+import { getPlaygroundChannel, initPlaygroundChannel } from '../commands/mentorship';
+import { epochUpdate } from '../cron/cron';
 import { getPosts } from '../graph/GetUser.query';
 import { prisma } from '../prisma/prisma';
 import { AutoType } from '../types/Auto';
@@ -23,21 +26,25 @@ import { CommandType } from '../types/Command';
 import { RegisterCommandsOptions } from '../types/CommandRegister';
 import { MessageContextMenuType, UserContextMenuType } from '../types/ContextMenu';
 import { ModalType } from '../types/Modal';
-import { CallType } from '../types/Util';
 import {
-	defaultChannelScanResult,
-	defaultGuildInform,
-	defaultVoiceContext,
+	DefaultChannelScanResult,
+	DefaultGuildInform,
+	DefaultMentorshipConfig,
+	DefaultVoiceContext,
 	LINK,
-	NUMBER
+	NUMBER,
+	StickyMsgTypeToMsg
 } from '../utils/const';
+import dayjs from '../utils/dayjs';
 import { logger } from '../utils/logger';
 import {
 	autoArchive,
-	checkChannelPermission,
-	checkStickyAndInit,
+	awaitWrap,
+	checkTextChannelPermission,
+	checkTextChannelPermissionForStickyMsg,
 	deSerializeChannelScan,
-	getNextBirthday
+	getNextBirthday,
+	startOfIsoWeekUnix
 } from '../utils/util';
 import { myCache } from './Cache';
 import { Event } from './Event';
@@ -154,15 +161,10 @@ export class MyClient extends Client {
 
 		this.once('ready', async () => {
 			await this.guilds.fetch();
+			await this.guilds.cache.get(process.env.GUILDID)?.commands.fetch();
 			await this._cacheInit();
 			await this._loadSticky();
-			setInterval(async () => {
-				try {
-					await prisma.$connect();
-				} catch (error) {
-					logger.error(error);
-				}
-			}, 60 * 1000);
+			await this._loadMentorshiconfig();
 			setInterval(this._guildsAutoArchive, NUMBER.AUTO_ARCHIVE_INTERVL, this);
 			setInterval(this._fetchHashNodePost, NUMBER.AUTO_POST_SCAN_INTERVAL, this);
 			setInterval(this._birthdayScan, NUMBER.BIRTHDAY_SCAN_INTERVAL, this);
@@ -190,10 +192,10 @@ export class MyClient extends Client {
 
 	private async _cacheInit() {
 		const voiceContextCache: VoiceContextCache = {};
-		const guildId = process.env.GUILDID;
+		const discordId = process.env.GUILDID;
 
 		for (const guildId of this.guilds.cache.keys()) {
-			voiceContextCache[guildId] = defaultVoiceContext;
+			voiceContextCache[guildId] = DefaultVoiceContext;
 		}
 		myCache.mySet('VoiceContext', voiceContextCache);
 
@@ -202,7 +204,7 @@ export class MyClient extends Client {
 		try {
 			const guildInform = await prisma.guilds.findFirst({
 				cursor: {
-					discordId: guildId
+					discordId
 				}
 			});
 
@@ -210,7 +212,7 @@ export class MyClient extends Client {
 
 			const guildChannelScan = await prisma.channelScan.findFirst({
 				cursor: {
-					discordId: guildId
+					discordId
 				}
 			});
 
@@ -218,37 +220,122 @@ export class MyClient extends Client {
 			if (!guildInform) {
 				await prisma.guilds.create({
 					data: {
-						...defaultGuildInform,
-						discordId: guildId
+						...DefaultGuildInform,
+						discordId
 					}
 				});
 				myCache.mySet('Guild', {
-					[guildId]: defaultGuildInform
+					[discordId]: DefaultGuildInform
 				});
 			} else {
 				delete guildInform.discordId;
 				myCache.mySet('Guild', {
-					[guildId]: guildInform
+					[discordId]: guildInform
 				});
 			}
 
 			if (!guildChannelScan) {
 				await prisma.channelScan.create({
 					data: {
-						...defaultChannelScanResult,
-						discordId: guildId
+						...DefaultChannelScanResult,
+						discordId
 					}
 				});
 				myCache.mySet('ChannelScan', {
-					[guildId]: defaultChannelScanResult
+					[discordId]: DefaultChannelScanResult
 				});
 			} else {
 				myCache.mySet('ChannelScan', deSerializeChannelScan(guildChannelScan));
 			}
 
+			const mentorshipConfig = await prisma.mentorship.findFirst({
+				cursor: {
+					discordId
+				}
+			});
+
+			if (!mentorshipConfig) {
+				await prisma.mentorship.create({
+					data: DefaultMentorshipConfig
+				});
+				myCache.mySet('MentorshipConfig', {
+					[discordId]: DefaultMentorshipConfig
+				});
+			} else {
+				myCache.mySet('MentorshipConfig', {
+					[discordId]: mentorshipConfig
+				});
+			}
+			this.table.addRow('MentorshipConfig', '✅ Fetched and cached');
+
+			const { isEpochStarted } = myCache.myGet('MentorshipConfig')[discordId];
+
+			if (isEpochStarted) {
+				let currentEpoch = await prisma.epoch.findFirst({
+					orderBy: {
+						startTimestamp: 'desc'
+					},
+					where: {
+						discordId
+					}
+				});
+				const now = dayjs.utc().unix();
+
+				if (Number(currentEpoch.endTimestamp) < now) {
+					currentEpoch = await prisma.epoch.create({
+						data: {
+							discordId,
+							startTimestamp: startOfIsoWeekUnix().toString(),
+							endTimestamp: epochUpdate.getNextEpochEndUnixTime().toString()
+						}
+					});
+				}
+
+				myCache.mySet('CurrentEpoch', {
+					[discordId]: currentEpoch
+				});
+			} else {
+				myCache.mySet('CurrentEpoch', {});
+			}
+			this.table.addRow('Epoch', '✅ Fetched and cached');
+
+			const stickRecords = await prisma.stickyInform.findFirst({
+				where: {
+					discordId
+				},
+				include: {
+					stickRecords: {
+						where: {
+							stickyInformDiscordId: discordId
+						}
+					}
+				}
+			});
+
+			if (stickRecords) {
+				myCache.mySet(
+					'StickyInform',
+					stickRecords.stickRecords.reduce((pre, cur) => {
+						pre[cur.channelId] = cur;
+						return pre;
+					}, {})
+				);
+			} else {
+				await prisma.stickyInform.create({
+					data: {
+						discordId,
+						stickRecords: {
+							create: []
+						}
+					}
+				});
+				myCache.mySet('StickyInform', {});
+			}
+			this.table.addRow('Sticky Records', '✅ Fetched and cached');
+
 			const hashNodeData = await prisma.hashNodeSub.findMany({
 				where: {
-					discordId: guildId
+					discordId: discordId
 				}
 			});
 			const hashNodeCache: HashNodeSubCache = hashNodeData.reduce((pre, cur) => {
@@ -286,32 +373,54 @@ export class MyClient extends Client {
 	}
 
 	private async _loadSticky() {
-		const guildsCache = myCache.myGet('Guild');
+		const guild = this.guilds.cache.get(process.env.GUILDID);
+		const stickyRecords = myCache.myGet('StickyInform');
 
-		for (const [guildId, guild] of this.guilds.cache) {
-			if (guild.available) {
-				const { introductionChannel, womenIntroductionChannel } =
-					guildsCache[guildId].channels;
-				const botId = guild.members.me.id;
+		if (!guild || Object.keys(stickyRecords).length === 0) return;
+		const botId = guild.members.me.id;
 
-				if (introductionChannel) {
-					await checkStickyAndInit(
-						guild.channels,
-						introductionChannel,
-						botId,
-						CallType.ONBOARDING
-					);
-				}
-				if (womenIntroductionChannel) {
-					await checkStickyAndInit(
-						guild.channels,
-						womenIntroductionChannel,
-						botId,
-						CallType.WOMENVIBES
-					);
-				}
+		for (const { channelId, messageId, messageType } of Object.values(stickyRecords)) {
+			const channel = guild.channels.cache.get(channelId) as TextChannel;
+
+			if (checkTextChannelPermissionForStickyMsg(channel, botId)) continue;
+			if (!channel) continue;
+			const { result: message } = await awaitWrap(channel.messages.fetch(messageId));
+
+			if (message) {
+				await message.delete();
 			}
+			stickyRecords[channelId].messageId = (
+				await channel.send(StickyMsgTypeToMsg[messageType])
+			).id;
 		}
+		await Promise.all(
+			Object.values(stickyRecords).map((value) =>
+				prisma.stickyRecord.update({
+					where: {
+						channelId: value.channelId
+					},
+					data: {
+						messageId: value.messageId
+					}
+				})
+			)
+		);
+		myCache.mySet('StickyInform', stickyRecords);
+	}
+
+	private async _loadMentorshiconfig() {
+		// Load Mentorship Playground
+		const guild = this.guilds.cache.get(process.env.GUILDID);
+		const playgroundChannelResult = getPlaygroundChannel(guild);
+		const pgChannelMessageId =
+			myCache.myGet('MentorshipConfig')[guild.id].playgroundChannelMsgId;
+
+		if (playgroundChannelResult.isErr()) return;
+		// Not care about the return type
+		return ResultAsync.fromPromise(
+			playgroundChannelResult.value.messages.fetch(pgChannelMessageId),
+			() => new Error('Cannot fetch playground channel message')
+		).orElse(() => initPlaygroundChannel(playgroundChannelResult.value) as any);
 	}
 
 	private async _fetchHashNodePost(client: MyClient) {
@@ -328,7 +437,10 @@ export class MyClient extends Client {
 		const hashNodeSubChannel = guild.channels.cache.get(hashNodeSubChannelId) as TextChannel;
 
 		if (!hashNodeSubChannel) return;
-		const permissionChecking = checkChannelPermission(hashNodeSubChannel, guild.members.me.id);
+		const permissionChecking = checkTextChannelPermission(
+			hashNodeSubChannel,
+			guild.members.me.id
+		);
 
 		if (permissionChecking) return;
 		const embeds: Array<EmbedBuilder> = [];

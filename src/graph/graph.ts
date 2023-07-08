@@ -1,6 +1,6 @@
 import { GraphQLClient } from 'graphql-request';
 
-import { TimeOutError } from '../utils/error';
+import { TimeOutError } from '../types/Error';
 import { awaitWrapWithTimeout } from '../utils/util';
 
 const _client: GraphQLClient = new GraphQLClient('https://api.hashnode.com/');

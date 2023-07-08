@@ -17,15 +17,15 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"@prisma/client": "^4.8.0",
+		"@prisma/client": "^4.11.0",
 		"@types/glob": "^8.0.0",
 		"@types/lodash": "^4.14.186",
 		"@types/sprintf-js": "^1.1.2",
 		"@typescript-eslint/parser": "^5.39.0",
 		"ascii-table": "^0.0.9",
+		"cron": "^2.3.0",
 		"dayjs": "^1.11.7",
-		"discord-api-types": "^0.37.12",
-		"discord.js": "^14.5.0",
+		"discord.js": "^14.9.0",
 		"dotenv": "^16.0.3",
 		"eslint": "^8.25.0",
 		"eslint-config-alloy": "^4.7.0",
@@ -33,13 +33,14 @@
 		"glob": "^8.0.3",
 		"graphql-request": "^5.0.0",
 		"lodash": "^4.17.21",
+		"neverthrow": "^6.0.0",
 		"node-cache": "^5.1.2",
 		"nodemon": "^2.0.20",
 		"pino": "^8.6.1",
 		"pino-pretty": "^9.1.1",
 		"prettier": "^2.7.1",
-		"prettier-plugin-prisma": "^4.4.0",
-		"prisma": "^4.8.0",
+		"prettier-plugin-prisma": "^4.10.0",
+		"prisma": "^4.11.0",
 		"sprintf-js": "^1.1.2",
 		"timezones.json": "^1.6.1"
 	},
@@ -47,6 +48,7 @@
 		"@graphql-codegen/cli": "^2.14.1",
 		"@graphql-codegen/typescript": "^2.8.2",
 		"@graphql-codegen/typescript-operations": "^2.5.7",
-		"@graphql-codegen/typescript-resolvers": "^2.7.7"
+		"@graphql-codegen/typescript-resolvers": "^2.7.7",
+		"@types/cron": "^2.0.1"
 	}
 }

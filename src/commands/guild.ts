@@ -1,3 +1,4 @@
+import { StickyMessageType } from '@prisma/client';
 import {
 	ApplicationCommandOptionType,
 	ApplicationCommandType,
@@ -14,13 +15,13 @@ import { GuildInform } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import {
 	ChannelOptionName,
-	channelOptionNameToDBPropery,
+	channelOptionNameAndPrisamPropertyMap,
 	COMMAND_CHOICES,
 	COMMAND_CONTENT
 } from '../utils/const';
 import {
-	checkChannelPermission,
 	checkIntroductionChannelPermission,
+	checkTextChannelPermission,
 	readGuildInform,
 	stickyMsgHandler
 } from '../utils/util';
@@ -238,11 +239,12 @@ export default new Command({
 			if (subCommandName === 'channel') {
 				const channelOptions = args.data[0].options[0].options;
 
-				if (channelOptions.length === 0)
+				if (channelOptions.length === 0) {
 					return interaction.reply({
 						content: 'Sorry, you have to choose at least one options.',
 						ephemeral: true
 					});
+				}
 				await interaction.deferReply({ ephemeral: true });
 				const cachedGuildInform = myCache.myGet('Guild')[guildId];
 
@@ -264,7 +266,7 @@ export default new Command({
 						);
 						continue;
 					}
-					const permissionChecking = checkChannelPermission(targetChannel, botId);
+					const permissionChecking = checkTextChannelPermission(targetChannel, botId);
 
 					if (permissionChecking) {
 						failReplyArray.push(
@@ -296,29 +298,36 @@ export default new Command({
 							continue;
 						}
 						const preChannelId = myCache.myGet('Guild')[guildId].channels[
-							channelOptionNameToDBPropery[channelOptionName]
+							channelOptionNameAndPrisamPropertyMap[channelOptionName]
 						] as string;
+						const stickyMessageType =
+							channelOptionName === ChannelOptionName.Introduction
+								? StickyMessageType.Onboarding
+								: StickyMessageType.OnboardingWomen;
 
 						if (preChannelId && preChannelId !== channelId) {
 							const preChannel = interaction.guild.channels.cache.get(
 								preChannelId
 							) as TextChannel;
 
-							stickyMsgHandler(targetChannel, botId, preChannel, channelOptionName);
+							stickyMsgHandler(targetChannel, stickyMessageType, preChannel);
 						} else {
-							stickyMsgHandler(targetChannel, botId);
+							stickyMsgHandler(targetChannel, stickyMessageType);
 						}
 					}
+
 					successReplyArray.push(
 						sprintf(COMMAND_CONTENT.CHANNEL_SETTING_SUCCESS_REPLY, {
 							setChannelName: channelOptionName,
 							targetChannelId: channelId
 						})
 					);
-					if (channelId !== cachedGuildInform.channels[channelOptionName])
-						cachedGuildInform.channels[
-							channelOptionNameToDBPropery[channelOptionName]
-						] = channelId;
+					const PrismaProperty = channelOptionNameAndPrisamPropertyMap[channelOptionName];
+
+					cachedGuildInform.channels[PrismaProperty] =
+						channelId !== cachedGuildInform.channels[PrismaProperty]
+							? channelId
+							: cachedGuildInform.channels[PrismaProperty];
 				}
 				if (successReplyArray.length !== 0) {
 					await prisma.guilds.update({

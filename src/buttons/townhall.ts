@@ -3,14 +3,15 @@ import { sprintf } from 'sprintf-js';
 
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
-import { defaultVoiceContext, LINK } from '../utils/const';
+import { ButtonCustomIdEnum } from '../types/Button';
+import { DefaultVoiceContext, LINK } from '../utils/const';
 import { getCurrentTimeMin } from '../utils/util';
 
 export default new Button({
-	customIds: ['end', 'number'],
+	customIds: [ButtonCustomIdEnum.EndTownHall, ButtonCustomIdEnum.GetTHAttenderNumber],
 	execute: async ({ interaction }) => {
 		switch (interaction.customId) {
-			case 'end': {
+			case ButtonCustomIdEnum.EndTownHall: {
 				const guildId = interaction.guild.id;
 				const { hostId, attendees, duration, messageId } =
 					myCache.myGet('VoiceContext')[guildId];
@@ -53,7 +54,7 @@ export default new Button({
 
 				myCache.mySet('VoiceContext', {
 					...myCache.myGet('VoiceContext'),
-					[guildId]: defaultVoiceContext
+					[guildId]: DefaultVoiceContext
 				});
 				if (eligibleAttendees.length === 0)
 					return interaction.followUp({
@@ -93,7 +94,7 @@ export default new Button({
 					]
 				});
 			}
-			case 'number': {
+			case ButtonCustomIdEnum.GetTHAttenderNumber: {
 				const channel = interaction.channel as VoiceChannel;
 
 				return interaction.reply({

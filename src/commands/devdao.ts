@@ -12,7 +12,7 @@ import { sprintf } from 'sprintf-js';
 import { Command } from '../structures/Command';
 import { CommandNameEmun } from '../types/Command';
 import { DOCS } from '../utils/const';
-import { checkChannelPermission } from '../utils/util';
+import { checkTextChannelPermission } from '../utils/util';
 
 export default new Command({
 	name: CommandNameEmun.Devdao,
@@ -48,7 +48,7 @@ export default new Command({
 				content: 'Sorry, you cannot choose a bot as a target.',
 				ephemeral: true
 			});
-		const permissionCheckingResult = checkChannelPermission(
+		const permissionCheckingResult = checkTextChannelPermission(
 			interaction.channel as TextChannel,
 			interaction.guild.members.me.id
 		);

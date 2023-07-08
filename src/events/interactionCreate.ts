@@ -11,14 +11,14 @@ import { sprintf } from 'sprintf-js';
 import { client } from '..';
 import { myCache } from '../structures/Cache';
 import { Event } from '../structures/Event';
-import { ExtendedButtonInteraction } from '../types/Button';
+import { ButtonCollectorCustomId, ExtendedButtonInteraction } from '../types/Button';
 import { ExtendedCommandInteration } from '../types/Command';
 import {
 	ExtendedMessageContextMenuInteraction,
 	ExtendedUserContextMenuInteraction
 } from '../types/ContextMenu';
-import { ExtendedModalSubmitInteraction } from '../types/Modal';
-import { ButtonCollectorCustomIdRecord, ERROR_REPLY } from '../utils/const';
+import { ExtendedModalSubmitInteraction, ModalCollectorCustomIdEnum } from '../types/Modal';
+import { ERROR_REPLY } from '../utils/const';
 import { logger } from '../utils/logger';
 
 export default new Event('interactionCreate', async (interaction: Interaction) => {
@@ -126,7 +126,12 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		const button = client.buttons.get(interaction.customId);
 
 		if (!button) {
-			if (Object.keys(ButtonCollectorCustomIdRecord).includes(interaction.customId)) return;
+			if (
+				Object.values(ButtonCollectorCustomId).includes(
+					interaction.customId as ButtonCollectorCustomId
+				)
+			)
+				return;
 			return interaction.reply({
 				content: 'You have clicked a non exitent button',
 				ephemeral: true
@@ -167,6 +172,12 @@ export default new Event('interactionCreate', async (interaction: Interaction) =
 		const modal = client.modals.get(interaction.customId);
 
 		if (!modal) {
+			if (
+				Object.values(ModalCollectorCustomIdEnum).includes(
+					interaction.customId as ModalCollectorCustomIdEnum
+				)
+			)
+				return;
 			return interaction.reply({
 				content: 'You have clicked a non exitent modal',
 				ephemeral: true

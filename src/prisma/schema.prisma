@@ -21,6 +21,25 @@ model Guilds {
     switch             SwitchInform
 }
 
+model StickyInform {
+    discordId    String         @id @map("_id")
+    stickRecords StickyRecord[]
+}
+
+model StickyRecord {
+    channelId             String            @id @map("_id")
+    messageId             String            @default("")
+    StickyInform          StickyInform      @relation(fields: [stickyInformDiscordId], references: [discordId])
+    stickyInformDiscordId String
+    messageType           StickyMessageType
+}
+
+enum StickyMessageType {
+    Onboarding
+    OnboardingWomen
+    Mentorship
+}
+
 model ChannelScan {
     discordId  String     @id @map("_id")
     categories Category[]
@@ -35,40 +54,48 @@ model Birthday {
 }
 
 model Mentorship {
-    discordId         String   @id @map("_id")
-    adminRole         String[] @default([])
-    mentorChannel     String   @default("")
-    playgroundChannel String   @default("")
-    tokenPerMin       Int      @default(0)
+    discordId              String  @id @map("_id")
+    adminRole              String  @default("")
+    playgroundChannel      String  @default("")
+    playgroundChannelMsgId String  @default("")
+    notificationChannel    String  @default("")
+    tokenPerMin            Int     @default(0)
+    isEpochStarted         Boolean @default(false)
 }
 
 model Mentee {
-    menteeId       String  @id @map("_id")
-    discordId      String
-    discordName    String
-    mentorId       String
-    mentoName      String
-    mentorMentorId String?
+    id         String  @id @map("_id")
+    name       String
+    discordId  String
+    mentorId   String?
+    mentorName String?
 }
 
 model Mentor {
-    mentorId   String   @id @map("_id")
-    discordId  String
-    mentoName  String
-    menteesRef String[] @default([])
-    rewardsRef String[]
+    id           String   @id @map("_id")
+    name         String
+    discordId    String
+    isDataShared Boolean  @default(false)
+    menteesRef   String[] @default([])
 }
 
 model Reward {
-    id            String @id @default(auto()) @map("_id") @db.ObjectId
-    epochId       Int
-    confirmedMins Int
+    id           String  @id @default(auto()) @map("_id") @db.ObjectId
+    discordId    String
+    claimedMins  Int
+    isConfirmed  Boolean
+    currentEpoch Epoch   @relation(fields: [epochId], references: [id])
+    epochId      String  @db.ObjectId
+    mentorId     String
+    menteeId     String
 }
 
 model Epoch {
-    epochId        Int    @id @map("_id")
+    id             String   @id @default(auto()) @map("_id") @db.ObjectId
     startTimestamp String
     endTimestamp   String
+    Reward         Reward[]
+    discordId      String
 }
 
 model Record {

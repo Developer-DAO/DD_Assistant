@@ -5,7 +5,7 @@ import { prisma } from '../prisma/prisma';
 import { myCache } from '../structures/Cache';
 import { Command } from '../structures/Command';
 import { CommandNameEmun } from '../types/Command';
-import { checkChannelPermission, fetchCommandId } from '../utils/util';
+import { checkTextChannelPermission, fetchCommandId } from '../utils/util';
 
 export default new Command({
 	name: CommandNameEmun.Hashnode_sub,
@@ -40,7 +40,10 @@ export default new Command({
 				ephemeral: true
 			});
 		}
-		const permissionChecking = checkChannelPermission(hashNodeSubChannel, guild.members.me.id);
+		const permissionChecking = checkTextChannelPermission(
+			hashNodeSubChannel,
+			guild.members.me.id
+		);
 
 		if (permissionChecking) {
 			return interaction.reply({
@@ -78,7 +81,7 @@ export default new Command({
 		const createResult = await prisma.hashNodeSub.create({
 			data: {
 				discordId: guildId,
-				hashNodeUserName,
+				hashNodeUserName
 			},
 			select: {
 				id: true

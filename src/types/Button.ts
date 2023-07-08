@@ -14,14 +14,30 @@ interface ButtonRunOptions {
 }
 
 type RunFunction = (options: ButtonRunOptions) => any;
-type ButtonCustomId = 'end' | 'schedule' | 'talk' | 'instruction' | 'send' | 'delete' | 'number';
+export enum ButtonCustomIdEnum {
+	GetSchdule = 'schedule',
+	CreateOnboardingThread = 'talk',
+	SendNotificationToChannel = 'send',
+	DeleteChannelFromScanResult = 'delete',
+	EndTownHall = 'end',
+	GetTHAttenderNumber = 'number',
+	ClaimMentorEffort = 'claim',
+	ConfirmMentorEffort = 'confirm',
+	MentorDataShare = 'mentor_data_share',
+	LeaderboardStatistics = 'leaderboard_statistics'
+}
+
 export enum ButtonCollectorCustomId {
 	Next = 'next',
 	Previous = 'previous',
 	First = 'first',
-	Last = 'last'
+	Last = 'last',
+	PairConfirm = 'pair_confirm',
+	MentorDataShareChange = 'mentor_data_share_change',
+	ConfirmEffortYes = 'confirm_effort_yes',
+	ConfirmEffortMessage = 'confirm_effort_message'
 }
 export interface ButtonType {
-	customIds: Array<ButtonCustomId>;
+	customIds: Array<ButtonCustomIdEnum>;
 	execute: RunFunction;
 }

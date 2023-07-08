@@ -3,11 +3,12 @@ import { TextChannel } from 'discord.js';
 import { prisma } from '../prisma/prisma';
 import { Button } from '../structures/Button';
 import { myCache } from '../structures/Cache';
+import { ButtonCustomIdEnum } from '../types/Button';
 import { NUMBER } from '../utils/const';
 import { getNotificationMsg, getParentInform, serializeChannelScan } from '../utils/util';
 
 export default new Button({
-	customIds: ['send', 'delete'],
+	customIds: [ButtonCustomIdEnum.SendNotificationToChannel, ButtonCustomIdEnum.DeleteChannelFromScanResult],
 	execute: async ({ interaction }) => {
 		const guildId = interaction.guild.id;
 		const scanResult = myCache.myGet('ChannelScan')[guildId];
@@ -41,7 +42,9 @@ export default new Button({
 				scanResult[parentId].channels[channelId] = {
 					channelName: channel.name,
 					archiveTimestamp: archiveTimestamp.toString(),
-					lastMsgTimestamp: Math.floor(notificationMsg.createdTimestamp / 1000).toString(),
+					lastMsgTimestamp: Math.floor(
+						notificationMsg.createdTimestamp / 1000
+					).toString(),
 					messageId: notificationMsg.id,
 					status: true
 				};
@@ -76,9 +79,9 @@ export default new Button({
 			components: [component]
 		});
 
-        myCache.mySet('ChannelScan', {
-            [guildId]: scanResult
-        })
+		myCache.mySet('ChannelScan', {
+			[guildId]: scanResult
+		});
 
 		return interaction.followUp({
 			content: replyMsg

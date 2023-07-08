@@ -3,11 +3,9 @@ import {
 	ChannelInform,
 	ChannelScan,
 	ChannelSetting,
-	OnboardInform
+	OnboardInform,
+	StickyMessageType
 } from '@prisma/client';
-import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone';
-import utc from 'dayjs/plugin/utc';
 import {
 	APIEmbedField,
 	CategoryChannel,
@@ -35,24 +33,24 @@ import {
 } from '../types/Cache';
 import { CommandNameEmun } from '../types/Command';
 import { ContextMenuNameEnum } from '../types/ContextMenu';
+import { TimeOutError } from '../types/Error';
 import {
 	awaitWrapSendRequestReturnValue,
 	CallType,
 	GetNextBirthday,
 	parentChannelInform
 } from '../types/Util';
+import dayjs from '../utils/dayjs';
 import {
-	ChannelOptionName,
 	COMMAND_CONTENT,
-	defaultPartialChannelInform,
+	DefaultPartialChannelInform,
 	ERROR_REPLY,
 	MONTH,
 	NUMBER,
-	STICKYMSG,
-	WEEK,
-	WOMENSTICKYMSG
+	PermissionFlagBitsContent,
+	StickyMsgTypeToMsg,
+	WEEK
 } from './const';
-import { TimeOutError } from './error';
 import { logger } from './logger';
 export interface awaitWrapType<T> {
 	result: T | null;
@@ -244,82 +242,73 @@ export function readGuildInform(guildInform: GuildInform, guildId: string): APIE
 	];
 }
 
-export function checkChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
+function _checkChannelPermission(
+	channel: TextChannel | CategoryChannel | VoiceChannel,
+	botId: string,
+	permissionList: Array<keyof typeof PermissionFlagsBits>
+) {
+	const permissionObj = channel.permissionsFor(botId, true);
+
+	for (const permission of permissionList) {
+		if (!permissionObj?.has(permissionList)) {
+			return (
+				PermissionFlagBitsContent[permission] ??
+				`Missing **${permission.toUpperCase()}** access.`
+			);
+		}
 	}
 	return false;
 }
 
-export function checkCategoryPermission(channel: CategoryChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
-		return 'Missing **MANAGE CHANNEL** access';
-	}
-	return false;
+export function checkTextChannelPermissionForStickyMsg(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ReadMessageHistory',
+		'ManageMessages'
+	]);
 }
 
-export function checkVoiceChannelPermission(channel: VoiceChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	return false;
+export function checkTextChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'SendMessages']);
 }
 
-export function checkToBeArchivedChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ManageChannels])) {
-		return 'Missing **MANAGE CHANNELS** access';
-	}
-	return false;
+export function checkCategoryPermission(channel: CategoryChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'ManageChannels']);
 }
 
-export function checkIntroductionChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ReadMessageHistory])) {
-		return 'Missing **READ MESSAGE HISTORY** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.CreatePublicThreads])) {
-		return 'Missing **CREATE PUBLIC THREADS** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessagesInThreads])) {
-		return 'Missing **SEND MESSAGES IN THREAD** access';
-	}
-	return false;
+export function checkVoiceChannelPermission(channel: VoiceChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'SendMessages']);
 }
 
-export function checkTownHallChannelPermission(channel: TextChannel, userId: string) {
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.Connect])) {
-		return 'Missing **CONNECT** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.ViewChannel])) {
-		return 'Missing **VIEW CHANNEL** access';
-	}
-	if (!channel.permissionsFor(userId, true).has([PermissionFlagsBits.SendMessages])) {
-		return 'Missing **SEND MESSAGES** access';
-	}
-	return false;
+export function checkToBeArchivedChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ManageChannels'
+	]);
+}
+
+export function checkStickyTextChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ReadMessageHistory'
+	]);
+}
+
+export function checkIntroductionChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, [
+		'ViewChannel',
+		'SendMessages',
+		'ReadMessageHistory',
+		'CreatePublicThreads',
+		'SendMessagesInThreads'
+	]);
+}
+
+export function checkTownHallChannelPermission(channel: TextChannel, botId: string) {
+	return _checkChannelPermission(channel, botId, ['ViewChannel', 'SendMessages', 'Connect']);
 }
 
 export function getNotificationMsg(channelId: string, timestamp: number) {
@@ -331,38 +320,54 @@ export function getNotificationMsg(channelId: string, timestamp: number) {
 
 export async function stickyMsgHandler(
 	curChannel: TextChannel,
-	botId: string,
-	preChannel?: TextChannel,
-	channelOptionName?: ChannelOptionName
+	messageType: StickyMessageType,
+	preChannel?: TextChannel
 ) {
-	if (checkIntroductionChannelPermission(curChannel, botId)) return;
+	const stickRecords = myCache.myGet('StickyInform');
+
 	if (typeof preChannel !== 'undefined') {
-		if (checkIntroductionChannelPermission(preChannel, botId)) return;
-		(await preChannel.messages.fetch({ limit: 25 }))
-			.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
-			.forEach((msg) => msg.delete());
-	}
-	if (checkIntroductionChannelPermission(curChannel, botId)) return;
-	(await curChannel.messages.fetch({ limit: 25 }))
-		.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
-		.forEach((msg) => msg.delete());
+		const { messageId } = stickRecords[preChannel.id];
+		const { result: message } = await awaitWrap(preChannel.messages.fetch(messageId));
 
-	if (typeof channelOptionName !== 'undefined') {
-		if (channelOptionName === ChannelOptionName.Introduction) {
-			return curChannel.send(STICKYMSG);
-		} else {
-			return curChannel.send(WOMENSTICKYMSG);
+		if (message) {
+			await message.delete();
 		}
+		await prisma.stickyInform.update({
+			where: {
+				discordId: preChannel.guildId
+			},
+			data: {
+				stickRecords: {
+					delete: {
+						channelId: preChannel.id
+					}
+				}
+			}
+		});
+		delete stickRecords[preChannel.id];
 	}
+	const { id: messageId } = await curChannel.send(StickyMsgTypeToMsg[messageType]);
+	const data = {
+		channelId: curChannel.id,
+		messageId,
+		messageType
+	};
 
-	const guildId = curChannel.guildId;
-	const { introductionChannel } = myCache.myGet('Guild')[guildId].channels;
-
-	if (curChannel.id === introductionChannel) {
-		return curChannel.send(STICKYMSG);
-	} else {
-		return curChannel.send(WOMENSTICKYMSG);
-	}
+	await prisma.stickyInform.update({
+		where: {
+			discordId: curChannel.guildId
+		},
+		data: {
+			stickRecords: {
+				create: data
+			}
+		}
+	});
+	stickRecords[curChannel.id] = {
+		...data,
+		stickyInformDiscordId: curChannel.guildId
+	};
+	myCache.mySet('StickyInform', stickRecords);
 }
 
 export async function fetchCallSchedule(guildId: string, type: CallType) {
@@ -606,7 +611,7 @@ export async function scanChannel(
 
 		if (parentId in scanResult) {
 			scanResult[parentId].channels[channelId] = {
-				...defaultPartialChannelInform,
+				...DefaultPartialChannelInform,
 				channelName: channel.name
 			};
 		} else {
@@ -614,7 +619,7 @@ export async function scanChannel(
 				parentName: parentName,
 				channels: {
 					[channelId]: {
-						...defaultPartialChannelInform,
+						...DefaultPartialChannelInform,
 						channelName: channel.name
 					}
 				}
@@ -723,7 +728,7 @@ export function embedFieldsFactory(channels: ChannelInformCache, guildId: string
 
 				const lastTimestamp = channels[channelId].lastMsgTimestamp;
 
-				if (lastTimestamp === defaultPartialChannelInform.lastMsgTimestamp) {
+				if (lastTimestamp === DefaultPartialChannelInform.lastMsgTimestamp) {
 					lastMsgTimeField = lastMsgTimeField.concat('> `unfetchable`\n');
 				} else {
 					lastMsgTimeField = lastMsgTimeField.concat(`> <t:${lastTimestamp}:R>\n`);
@@ -1029,7 +1034,7 @@ export async function createChannelHandler(
 
 	if (parentId in scanResult) {
 		scanResult[parentId].channels[newChannel.id] = {
-			...defaultPartialChannelInform,
+			...DefaultPartialChannelInform,
 			channelName: newChannel.name
 		};
 	} else {
@@ -1037,7 +1042,7 @@ export async function createChannelHandler(
 			parentName: parentName,
 			channels: {
 				[newChannel.id]: {
-					...defaultPartialChannelInform,
+					...DefaultPartialChannelInform,
 					channelName: newChannel.name
 				}
 			}
@@ -1063,42 +1068,22 @@ export async function createChannelHandler(
 	return;
 }
 
-export async function checkStickyAndInit(
-	guildChannelManager: GuildChannelManager,
-	channelId: string,
-	botId: string,
-	type: CallType
-) {
-	const channel = guildChannelManager.cache.get(channelId) as TextChannel;
-
-	if (channel && !checkIntroductionChannelPermission(channel, botId)) {
-		(await channel.messages.fetch({ limit: 50 }))
-			.filter((msg) => msg?.author?.bot && msg?.author?.id === botId && msg.deletable)
-			.forEach((msg) => {
-				msg.delete();
-			});
-		if (type === CallType.ONBOARDING) {
-			channel.send(STICKYMSG);
-		} else {
-			channel.send(WOMENSTICKYMSG);
-		}
-	}
-}
-
 export function fetchCommandId(commandName: CommandNameEmun | ContextMenuNameEnum, guild: Guild) {
-	if (process.env.MODE === 'dev') {
-		return guild.commands.cache.filter((cmd) => cmd.name === commandName).first().id;
+	if (process.env.mode === 'dev' || process.env.PM2_MODE === 'dev') {
+		return (
+			guild.commands.cache.filter((command) => command.name === commandName)?.first()?.id ??
+			'123456789'
+		);
 	} else {
-		return guild.client.application.commands.cache
-			.filter((cmd) => cmd.name === commandName)
-			.first().id;
+		return (
+			guild.client.application.commands.cache
+				.filter((command) => command.name === commandName)
+				?.first()?.id ?? '123456789'
+		);
 	}
 }
 
 export function getNextBirthday(month: string, day: string, offset: string): GetNextBirthday {
-	dayjs.extend(utc);
-	dayjs.extend(timezone);
-
 	try {
 		const thisYear = dayjs().year();
 		let birthday = dayjs.tz(`${thisYear}-${month}-${day}`, 'YYYY-MM-DD', offset).unix();
@@ -1127,4 +1112,30 @@ export function dateIsValid(month: string, day: string) {
 	const thisYear = dayjs().year();
 
 	return dayjs(`${thisYear}-${month}-${day}`, 'YYYY-MM-DD').isValid();
+}
+
+export function startOfIsoWeekUnix() {
+	return dayjs.utc().startOf('isoWeek').unix();
+}
+
+export function isEpochEnd() {
+	const currentEpoch = myCache.myGet('CurrentEpoch')?.[process.env.GUILDID];
+	const now = dayjs().unix();
+
+	return (
+		!currentEpoch ||
+		now < Number(currentEpoch.startTimestamp) ||
+		now > Number(currentEpoch.endTimestamp)
+	);
+}
+
+export function separateArray<T>(arr: T[], numSubarrays: number): T[][] {
+	const subarraySize = Math.ceil(arr.length / numSubarrays);
+	const subarrays: T[][] = Array.from({ length: subarraySize }, () => []);
+
+	for (let i = 0; i < subarraySize; i++) {
+		subarrays[i] = arr.slice(i * numSubarrays, (i + 1) * numSubarrays);
+	}
+
+	return subarrays;
 }
